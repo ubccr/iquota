@@ -30,6 +30,7 @@ func main() {
 		&cli.StringFlag{Name: "conf,c", Usage: "Path to conf file"},
 		&cli.BoolFlag{Name: "debug,d", Usage: "Print debug messages"},
 		&cli.BoolFlag{Name: "verbose,v", Usage: "will display quotas on filesystems where no storage is allocated"},
+		&cli.BoolFlag{Name: "long,l", Usage: "display long listing"},
 		&cli.BoolFlag{Name: "g", Usage: "Print group quotas for the group of which the user is a member"},
 		&cli.BoolFlag{Name: "u", Usage: "Print user quota"},
 		&cli.StringFlag{Name: "user", Usage: "Print user quota for specified user (super-user only)"},
@@ -53,7 +54,16 @@ func main() {
 		return nil
 	}
 	app.Action = func(c *cli.Context) {
-		QuotaClient(c)
+		client := &QuotaClient{
+			Verbose:     c.Bool("verbose"),
+			Group:       c.Bool("g"),
+			User:        c.Bool("u"),
+			Long:        c.Bool("l"),
+			UserFilter:  c.String("user"),
+			GroupFilter: c.String("group"),
+			Filesystem:  c.String("filesystem")}
+
+		client.Run()
 	}
 
 	app.RunAndExitOnError()
