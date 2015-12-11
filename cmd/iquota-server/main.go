@@ -18,6 +18,9 @@ func init() {
 	viper.SetConfigName("iquota")
 	viper.SetConfigType("yaml")
 	viper.AddConfigPath("/etc/iquota/")
+	viper.SetDefault("enable_cache", false)
+	viper.SetDefault("redis", ":6379")
+	viper.SetDefault("cache_expire", 500)
 }
 
 func main() {

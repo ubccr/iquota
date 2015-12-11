@@ -10,6 +10,7 @@ import (
 
 	"github.com/Sirupsen/logrus"
 	"github.com/gorilla/context"
+	"github.com/spf13/viper"
 	"github.com/ubccr/iquota"
 )
 
@@ -84,25 +85,40 @@ func UserQuotaHandler(app *Application) http.Handler {
 			uid = qp.User
 		}
 
-		c := NewOnefsClient()
+		var qres *iquota.QuotaResponse
 
-		qres, err := c.FetchUserQuota(qp.Path, uid)
-		if err != nil {
-			logrus.WithFields(logrus.Fields{
-				"err": err.Error(),
-				"uid": uid,
-			}).Error("Failed to fetch user quota")
-			if ierr, ok := err.(*iquota.IsiError); ok {
-				errorHandler(app, w, http.StatusBadRequest, ierr)
-			} else {
-				errorHandler(app, w, http.StatusBadRequest, &iquota.IsiError{Code: "AEC_BAD_REQUEST", Message: "Fatal system error"})
+		if viper.GetBool("enable_cache") {
+			cqres, err := FetchUserQuotaCache(qp.Path, uid)
+			if err == nil {
+				qres = cqres
+			}
+		}
+
+		if qres == nil {
+			c := NewOnefsClient()
+			res, err := c.FetchUserQuota(qp.Path, uid)
+			if err != nil {
+				logrus.WithFields(logrus.Fields{
+					"err": err.Error(),
+					"uid": uid,
+				}).Error("Failed to fetch user quota")
+				if ierr, ok := err.(*iquota.IsiError); ok {
+					errorHandler(app, w, http.StatusBadRequest, ierr)
+				} else {
+					errorHandler(app, w, http.StatusBadRequest, &iquota.IsiError{Code: "AEC_BAD_REQUEST", Message: "Fatal system error"})
+				}
+
+				return
 			}
 
-			return
+			qres = res
+
+			if viper.GetBool("enable_cache") {
+				SetUserQuotaCache(qp.Path, uid, qres)
+			}
 		}
 
 		qr := &iquota.QuotaRestResponse{Quotas: qres.Quotas}
-
 		qr.Default, _ = app.defaultUserQuota[qp.Path]
 
 		out, err := json.Marshal(qr)
@@ -148,33 +164,65 @@ func GroupQuotaHandler(app *Application) http.Handler {
 		gquotas := make([]*iquota.Quota, 0)
 
 		for _, group := range groups {
-			qres, err := c.FetchGroupQuota(qp.Path, group)
-			if err != nil {
-				if ierr, ok := err.(*iquota.IsiError); ok {
-					if ierr.Code == "AEC_NOT_FOUND" && len(qp.Group) == 0 {
-						continue
+
+			var qres *iquota.QuotaResponse
+
+			if viper.GetBool("enable_cache") {
+				cqres, err := FetchGroupQuotaCache(qp.Path, group)
+				if err != nil {
+					if ierr, ok := err.(*iquota.IsiError); ok {
+						if ierr.Code == "AEC_NOT_FOUND" && len(qp.Group) == 0 {
+							continue
+						}
+						logrus.WithFields(logrus.Fields{
+							"err":   ierr.Error(),
+							"group": group,
+						}).Error("Failed to fetch group quota")
+						errorHandler(app, w, http.StatusBadRequest, ierr)
+						return
 					}
-					logrus.WithFields(logrus.Fields{
-						"err":   err.Error(),
-						"group": group,
-					}).Error("Failed to fetch group quota")
-					errorHandler(app, w, http.StatusBadRequest, ierr)
-				} else {
-					logrus.WithFields(logrus.Fields{
-						"err":   err.Error(),
-						"group": group,
-					}).Error("Failed to fetch group quota")
-					errorHandler(app, w, http.StatusBadRequest, &iquota.IsiError{Code: "AEC_BAD_REQUEST", Message: "Fatal system error"})
 				}
 
-				return
+				qres = cqres
+			}
+
+			if qres == nil {
+				res, err := c.FetchGroupQuota(qp.Path, group)
+				if err != nil {
+					if ierr, ok := err.(*iquota.IsiError); ok {
+						if ierr.Code == "AEC_NOT_FOUND" && viper.GetBool("enable_cache") {
+							SetGroupNegCache(qp.Path, group)
+						}
+
+						if ierr.Code == "AEC_NOT_FOUND" && len(qp.Group) == 0 {
+							continue
+						}
+						logrus.WithFields(logrus.Fields{
+							"err":   ierr.Error(),
+							"group": group,
+						}).Error("Failed to fetch group quota")
+						errorHandler(app, w, http.StatusBadRequest, ierr)
+					} else {
+						logrus.WithFields(logrus.Fields{
+							"err":   err.Error(),
+							"group": group,
+						}).Error("Failed to fetch group quota")
+						errorHandler(app, w, http.StatusBadRequest, &iquota.IsiError{Code: "AEC_BAD_REQUEST", Message: "Fatal system error"})
+					}
+
+					return
+				}
+
+				qres = res
+				if viper.GetBool("enable_cache") {
+					SetGroupQuotaCache(qp.Path, group, qres)
+				}
 			}
 
 			gquotas = append(gquotas, qres.Quotas...)
 		}
 
 		qr := &iquota.QuotaRestResponse{Quotas: gquotas}
-
 		qr.Default, _ = app.defaultGroupQuota[qp.Path]
 
 		out, err := json.Marshal(qr)
