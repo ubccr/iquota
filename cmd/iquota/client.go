@@ -325,7 +325,7 @@ func (c *QuotaClient) printGroupQuota(username string, mounts []*Filesystem) {
 
 		if len(qr.Quotas) == 0 && qr.Default == nil {
 			if c.Verbose {
-				fmt.Printf("%s\n", fs)
+				c.printFilesystem(fs)
 				fmt.Printf("   No quota defined.\n")
 
 			} else {
@@ -335,7 +335,7 @@ func (c *QuotaClient) printGroupQuota(username string, mounts []*Filesystem) {
 			continue
 		}
 
-		fmt.Printf("%s\n", fs)
+		c.printFilesystem(fs)
 		if qr.Default != nil {
 			c.printDefaultQuota(qr.Default)
 		}
