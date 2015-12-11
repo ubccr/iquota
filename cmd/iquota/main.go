@@ -23,7 +23,7 @@ func main() {
 	app := cli.NewApp()
 	app.Name = "iquota"
 	app.Authors = []cli.Author{cli.Author{Name: "Andrew E. Bruno", Email: "aebruno2@buffalo.edu"}}
-	app.Usage = "displays users' disk usage and limits.  By default only the user quotas are printed. By default space usage and limits are shown in kbytes"
+	app.Usage = "displays users' disk usage and limits.  By default only the user quotas are printed."
 	app.Version = "0.0.1"
 	app.HideVersion = true
 	app.Flags = []cli.Flag{
@@ -31,6 +31,7 @@ func main() {
 		&cli.BoolFlag{Name: "debug,d", Usage: "Print debug messages"},
 		&cli.BoolFlag{Name: "verbose,v", Usage: "will display quotas on filesystems where no storage is allocated"},
 		&cli.BoolFlag{Name: "long,l", Usage: "display long listing"},
+		&cli.BoolFlag{Name: "full-path", Usage: "show full path for nfs mounts"},
 		&cli.BoolFlag{Name: "g", Usage: "Print group quotas for the group of which the user is a member"},
 		&cli.BoolFlag{Name: "u", Usage: "Print user quota"},
 		&cli.StringFlag{Name: "user", Usage: "Print user quota for specified user (super-user only)"},
@@ -58,7 +59,8 @@ func main() {
 			Verbose:     c.Bool("verbose"),
 			Group:       c.Bool("g"),
 			User:        c.Bool("u"),
-			Long:        c.Bool("l"),
+			Long:        c.Bool("long"),
+			FullPath:    c.Bool("full-path"),
 			UserFilter:  c.String("user"),
 			GroupFilter: c.String("group"),
 			Filesystem:  c.String("filesystem")}

@@ -34,8 +34,11 @@ const (
 )
 
 var (
-	green = color.New(color.FgCyan)
-	red   = color.New(color.FgRed)
+	cyan   = color.New(color.FgCyan)
+	green  = color.New(color.FgGreen)
+	red    = color.New(color.FgRed)
+	yellow = color.New(color.FgYellow)
+	blue   = color.New(color.FgBlue)
 )
 
 type Filesystem struct {
@@ -49,6 +52,7 @@ type QuotaClient struct {
 	Group       bool
 	User        bool
 	Long        bool
+	FullPath    bool
 	UserFilter  string
 	GroupFilter string
 	Filesystem  string
@@ -77,6 +81,15 @@ func (c *QuotaClient) format() string {
 	}
 
 	return SHORT_FORMAT
+}
+
+func (c *QuotaClient) printFilesystem(fs *Filesystem) {
+	if c.FullPath {
+		fmt.Printf("%s\n", fs)
+		return
+	}
+
+	fmt.Printf("%s\n", fs.ShortString())
 }
 
 func (c *QuotaClient) fetchQuota(url string) (*iquota.QuotaRestResponse, error) {
@@ -137,8 +150,11 @@ func (c *QuotaClient) parseMtab() ([]*Filesystem, error) {
 		fields := strings.Split(scanner.Text(), " ")
 		if fields[2] == "nfs" {
 			parts := strings.Split(fields[0], ":")
-			fs := &Filesystem{Host: parts[0], Path: parts[1], MountPoint: fields[1]}
-			mounts = append(mounts, fs)
+			// XXX only include isilon mounts. Will this always be /ifs?
+			if strings.HasPrefix(parts[1], "/ifs") {
+				fs := &Filesystem{Host: parts[0], Path: parts[1], MountPoint: fields[1]}
+				mounts = append(mounts, fs)
+			}
 		}
 	}
 
@@ -163,7 +179,7 @@ func (c *QuotaClient) printQuota(name string, quota *iquota.Quota) {
 	graceTime := now.Add(time.Duration(quota.Threshold.SoftGrace) * time.Second)
 	var grace string
 
-	printer := green
+	printer := cyan
 	if quota.Threshold.SoftExceeded {
 		printer = red
 		grace = humanize.RelTime(
@@ -198,6 +214,34 @@ func (c *QuotaClient) printQuota(name string, quota *iquota.Quota) {
 		grace)
 }
 
+func (c *QuotaClient) printDefaultQuota(quota *iquota.Quota) {
+	now := time.Now()
+	graceTime := now.Add(time.Duration(quota.Threshold.SoftGrace) * time.Second)
+	grace := humanize.RelTime(graceTime, now, "", "")
+
+	if c.Long {
+		yellow.Printf(c.format(),
+			"",
+			"(default)",
+			"",
+			"",
+			"",
+			humanize.Bytes(uint64(quota.Threshold.Soft)),
+			humanize.Bytes(uint64(quota.Threshold.Hard)),
+			grace)
+
+		return
+	}
+
+	yellow.Printf(c.format(),
+		"",
+		"(default)",
+		"",
+		"",
+		humanize.Bytes(uint64(quota.Threshold.Soft)),
+		grace)
+}
+
 func (c *QuotaClient) printUserQuota(username string, mounts []*Filesystem) {
 	fmt.Printf("User quotas:\n")
 	c.printHeader("user")
@@ -227,7 +271,7 @@ func (c *QuotaClient) printUserQuota(username string, mounts []*Filesystem) {
 
 		if len(qr.Quotas) == 0 && qr.Default == nil {
 			if c.Verbose {
-				fmt.Printf("%s\n", fs)
+				c.printFilesystem(fs)
 				fmt.Printf("   No quota defined.\n")
 
 			} else {
@@ -237,11 +281,10 @@ func (c *QuotaClient) printUserQuota(username string, mounts []*Filesystem) {
 			continue
 		}
 
-		if len(qr.Quotas) == 0 {
-			qr.Quotas = append(qr.Quotas, qr.Default)
+		c.printFilesystem(fs)
+		if qr.Default != nil {
+			c.printDefaultQuota(qr.Default)
 		}
-
-		fmt.Printf("%s\n", fs)
 		for _, quota := range qr.Quotas {
 			c.printQuota(username, quota)
 		}
@@ -292,11 +335,10 @@ func (c *QuotaClient) printGroupQuota(username string, mounts []*Filesystem) {
 			continue
 		}
 
-		if len(group) > 0 && len(qr.Quotas) == 0 {
-			qr.Quotas = append(qr.Quotas, qr.Default)
-		}
-
 		fmt.Printf("%s\n", fs)
+		if qr.Default != nil {
+			c.printDefaultQuota(qr.Default)
+		}
 		for _, quota := range qr.Quotas {
 			gname := group
 			if len(gname) == 0 && quota.Persona != nil {
