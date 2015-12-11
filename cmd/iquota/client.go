@@ -183,8 +183,8 @@ func (c *QuotaClient) printQuota(name string, quota *iquota.Quota) {
 	if quota.Threshold.SoftExceeded {
 		printer = red
 		grace = humanize.RelTime(
-			time.Unix(int64(quota.Threshold.SoftLastExceeded), 0),
-			graceTime,
+			time.Unix(int64(quota.Threshold.SoftLastExceeded), 0).Add(time.Duration(quota.Threshold.SoftGrace)*time.Second),
+			now,
 			"ago",
 			"from now")
 	} else {
