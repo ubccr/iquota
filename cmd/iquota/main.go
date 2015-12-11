@@ -29,7 +29,7 @@ func main() {
 	app.Flags = []cli.Flag{
 		&cli.StringFlag{Name: "conf,c", Usage: "Path to conf file"},
 		&cli.BoolFlag{Name: "debug,d", Usage: "Print debug messages"},
-		&cli.BoolFlag{Name: "verbose,v", Usage: "will display quotas on filesystems where no storage is allocated"},
+		&cli.BoolFlag{Name: "verbose,v", Usage: "will display quotas on all mounted filesystems"},
 		&cli.BoolFlag{Name: "long,l", Usage: "display long listing"},
 		&cli.BoolFlag{Name: "full-path", Usage: "show full path for nfs mounts"},
 		&cli.BoolFlag{Name: "group,g", Usage: "Print group quotas for the group of which the user is a member"},
