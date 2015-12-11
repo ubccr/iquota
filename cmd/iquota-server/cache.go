@@ -46,7 +46,7 @@ func redisGet(key string) (*iquota.QuotaResponse, error) {
 	return qr, nil
 }
 
-func redisSet(key string, qr *iquota.QuotaResponse) error {
+func redisSet(key string, qr *iquota.QuotaResponse, expire int) error {
 	conn, err := redis.Dial("tcp", viper.GetString("redis"))
 	if err != nil {
 		logrus.WithFields(logrus.Fields{
@@ -65,7 +65,7 @@ func redisSet(key string, qr *iquota.QuotaResponse) error {
 		return err
 	}
 
-	_, err = conn.Do("SETEX", key, viper.GetInt("cache_expire"), out)
+	_, err = conn.Do("SETEX", key, expire, out)
 	if err != nil {
 		logrus.WithFields(logrus.Fields{
 			"err": err.Error(),
@@ -90,13 +90,13 @@ func FetchUserQuotaCache(path, user string) (*iquota.QuotaResponse, error) {
 }
 
 func SetGroupQuotaCache(path, group string, qr *iquota.QuotaResponse) error {
-	return redisSet(fmt.Sprintf("%s:GROUP:%s", path, group), qr)
+	return redisSet(fmt.Sprintf("%s:GROUP:%s", path, group), qr, viper.GetInt("cache_expire"))
 }
 
 func SetGroupNegCache(path, group string) error {
-	return redisSet(fmt.Sprintf("%s:GROUP-NEG:%s", path, group), &iquota.QuotaResponse{})
+	return redisSet(fmt.Sprintf("%s:GROUP-NEG:%s", path, group), &iquota.QuotaResponse{}, viper.GetInt("neg_cache_expire"))
 }
 
 func SetUserQuotaCache(path, user string, qr *iquota.QuotaResponse) error {
-	return redisSet(fmt.Sprintf("%s:USER:%s", path, user), qr)
+	return redisSet(fmt.Sprintf("%s:USER:%s", path, user), qr, viper.GetInt("cache_expire"))
 }

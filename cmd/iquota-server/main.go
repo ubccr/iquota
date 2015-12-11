@@ -21,6 +21,7 @@ func init() {
 	viper.SetDefault("enable_cache", false)
 	viper.SetDefault("redis", ":6379")
 	viper.SetDefault("cache_expire", 500)
+	viper.SetDefault("neg_cache_expire", 86400)
 }
 
 func main() {
