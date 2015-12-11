@@ -175,8 +175,8 @@ func printUserQuota(c *cli.Context, username string, mounts []*Filesystem) {
 
 		fmt.Printf("%s\n", fs)
 		for _, quota := range qr.Quotas {
-            now := time.Now()
-            grace := now.Add(time.Duration(quota.Threshold.SoftGrace)*time.Second)
+			now := time.Now()
+			grace := now.Add(time.Duration(quota.Threshold.SoftGrace) * time.Second)
 
 			printer := green
 			if quota.Threshold.SoftExceeded {
@@ -242,8 +242,8 @@ func printGroupQuota(c *cli.Context, username string, mounts []*Filesystem) {
 
 		fmt.Printf("%s\n", fs)
 		for _, quota := range qr.Quotas {
-            now := time.Now()
-            grace := now.Add(time.Duration(quota.Threshold.SoftGrace)*time.Second)
+			now := time.Now()
+			grace := now.Add(time.Duration(quota.Threshold.SoftGrace) * time.Second)
 
 			printer := green
 			if quota.Threshold.SoftExceeded {
