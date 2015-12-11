@@ -32,10 +32,10 @@ func main() {
 		&cli.BoolFlag{Name: "verbose,v", Usage: "will display quotas on filesystems where no storage is allocated"},
 		&cli.BoolFlag{Name: "long,l", Usage: "display long listing"},
 		&cli.BoolFlag{Name: "full-path", Usage: "show full path for nfs mounts"},
-		&cli.BoolFlag{Name: "g", Usage: "Print group quotas for the group of which the user is a member"},
-		&cli.BoolFlag{Name: "u", Usage: "Print user quota"},
-		&cli.StringFlag{Name: "user", Usage: "Print user quota for specified user (super-user only)"},
-		&cli.StringFlag{Name: "group", Usage: "Print group quotas for specified group(s)."},
+		&cli.BoolFlag{Name: "group,g", Usage: "Print group quotas for the group of which the user is a member"},
+		&cli.BoolFlag{Name: "user,u", Usage: "Print user quota"},
+		&cli.StringFlag{Name: "show-user", Usage: "Print user quota for specified user (super-user only)"},
+		&cli.StringFlag{Name: "show-group", Usage: "Print group quota for specified group"},
 		&cli.StringFlag{Name: "f,filesystem", Usage: "report quotas only for filesystems specified on command line"},
 	}
 	app.Before = func(c *cli.Context) error {
@@ -57,12 +57,12 @@ func main() {
 	app.Action = func(c *cli.Context) {
 		client := &QuotaClient{
 			Verbose:     c.Bool("verbose"),
-			Group:       c.Bool("g"),
-			User:        c.Bool("u"),
+			Group:       c.Bool("group"),
+			User:        c.Bool("user"),
 			Long:        c.Bool("long"),
 			FullPath:    c.Bool("full-path"),
-			UserFilter:  c.String("user"),
-			GroupFilter: c.String("group"),
+			UserFilter:  c.String("show-user"),
+			GroupFilter: c.String("show-group"),
 			Filesystem:  c.String("filesystem")}
 
 		client.Run()
