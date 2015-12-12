@@ -76,7 +76,7 @@ func UserQuotaHandler(app *Application) http.Handler {
 		}
 
 		uid := user.Uid
-		if len(qp.User) != 0 {
+		if len(qp.User) != 0 && qp.User != uid {
 			if !user.IsAdmin() {
 				errorHandler(app, w, http.StatusBadRequest, &iquota.IsiError{Code: "AEC_BAD_REQUEST", Message: "Access denied"})
 				return
