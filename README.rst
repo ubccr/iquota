@@ -16,7 +16,7 @@ tool very similar to the native quota command in Linux but for Isilon nfs
 mounts. This `post <https://community.emc.com/message/762183#762183>`_ sums up
 essentially what this project aims to provide. 
 
-The following diagram shows the basic architecture if iquota:
+The following diagram shows the basic architecture of iquota:
 
 .. image:: docs/iquota-diagram.png
 
