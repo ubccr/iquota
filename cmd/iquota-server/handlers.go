@@ -161,6 +161,7 @@ func GroupQuotaHandler(app *Application) http.Handler {
 		}
 
 		c := NewOnefsClient()
+		c.NewSession()
 		gquotas := make([]*iquota.Quota, 0)
 
 		for _, group := range groups {
