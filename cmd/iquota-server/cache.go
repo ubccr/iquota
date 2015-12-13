@@ -29,7 +29,7 @@ func redisGet(key string) (*iquota.QuotaResponse, error) {
 		logrus.WithFields(logrus.Fields{
 			"err": err.Error(),
 			"key": key,
-		}).Info("Failed to fetch quota")
+		}).Info("Failed to fetch quota from cache")
 		return nil, err
 	}
 
