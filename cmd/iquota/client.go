@@ -45,8 +45,8 @@ type Filesystem struct {
 	Host       string
 	Path       string
 	MountPoint string
-    UserQuota  bool
-    GroupQuota bool
+	UserQuota  bool
+	GroupQuota bool
 }
 
 type QuotaClient struct {
@@ -141,7 +141,7 @@ func (c *QuotaClient) fetchQuota(url string) (*iquota.QuotaRestResponse, error) 
 func (c *QuotaClient) parseMtab() ([]*Filesystem, error) {
 	mounts := make([]*Filesystem, 0)
 
-    defaultFs := viper.GetStringMapString("filesystems")
+	defaultFs := viper.GetStringMapString("filesystems")
 
 	mtab, err := os.Open("/etc/mtab")
 	if err != nil {
@@ -154,21 +154,21 @@ func (c *QuotaClient) parseMtab() ([]*Filesystem, error) {
 		fields := strings.Split(scanner.Text(), " ")
 		if fields[2] == "nfs" {
 			parts := strings.Split(fields[0], ":")
-            fs := &Filesystem{
-                Host: parts[0],
-                Path: parts[1],
-                MountPoint: fields[1],
-                UserQuota: true,
-                GroupQuota: true,
-            }
+			fs := &Filesystem{
+				Host:       parts[0],
+				Path:       parts[1],
+				MountPoint: fields[1],
+				UserQuota:  true,
+				GroupQuota: true,
+			}
 
-            defaults, ok := defaultFs[fs.Path]
-            if ok {
-                fs.UserQuota = strings.Contains(defaults, "user")
-                fs.GroupQuota = strings.Contains(defaults, "group")
+			defaults, ok := defaultFs[fs.Path]
+			if ok {
+				fs.UserQuota = strings.Contains(defaults, "user")
+				fs.GroupQuota = strings.Contains(defaults, "group")
 				mounts = append(mounts, fs)
-            } else if len(defaultFs) == 0 && strings.HasPrefix(fs.Path, "/ifs") {
-                // XXX only include isilon mounts. Will this always be /ifs?
+			} else if len(defaultFs) == 0 && strings.HasPrefix(fs.Path, "/ifs") {
+				// XXX only include isilon mounts. Will this always be /ifs?
 				mounts = append(mounts, fs)
 			}
 		}
@@ -262,10 +262,10 @@ func (c *QuotaClient) printUserQuota(username string, mounts []*Filesystem) {
 	fmt.Printf("User quotas:\n")
 	c.printHeader("user")
 	for _, fs := range mounts {
-        if !fs.UserQuota {
-            logrus.Warn("User quota reporting disabled for filesystem: ", fs)
-            continue
-        }
+		if !fs.UserQuota {
+			logrus.Warn("User quota reporting disabled for filesystem: ", fs)
+			continue
+		}
 		params := url.Values{}
 		params.Add("user", username)
 		params.Add("path", fs.Path)
@@ -317,10 +317,10 @@ func (c *QuotaClient) printGroupQuota(username string, mounts []*Filesystem) {
 	group := c.GroupFilter
 
 	for _, fs := range mounts {
-        if !fs.GroupQuota {
-            logrus.Warn("Group quota reporting disabled for filesystem: ", fs)
-            continue
-        }
+		if !fs.GroupQuota {
+			logrus.Warn("Group quota reporting disabled for filesystem: ", fs)
+			continue
+		}
 		params := url.Values{}
 		params.Add("user", username)
 		params.Add("path", fs.Path)
