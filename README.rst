@@ -43,18 +43,21 @@ Requirements
 - Isilon OneFS API (v7.2.1)
 - Linux
 - Kerberos
+- sssd-ifp (SSSD InfoPipe responder)
 
 ------------------------------------------------------------------------
-Install iquota-server proxy
+Install and configure iquota-server proxy
 ------------------------------------------------------------------------
 
 *Note these docs are for CentOS 7.x. May need adjusting depending on your
 flavor of Linux*
 
-Setup and configure the iquota-server. Download the RPM 
-release `here <https://github.com/ubccr/iquota/releases>`_::
+Download the RPM release `here <https://github.com/ubccr/iquota/releases>`_::
 
   $ rpm -Uvh iquota-server-0.0.1-1.el7.centos.x86_64.rpm
+
+Create user account for accessing OneFS API
+============================================
 
 Create a role in OneFS that allows read-only access to quota information. For
 example::
@@ -65,6 +68,9 @@ example::
 Create a system user/pass account and add this user to the role. This will be
 the user account the iquota-server will use to connect to OneFS API.
 
+Setup Kerberos HTTP keytab
+===========================
+
 The iquota-server uses Kerberos authentication. You'll need to create a HTTP
 service keytab file. For example::
 
@@ -74,6 +80,47 @@ If using FreeIPA you can run::
 
     $ ipa service-add HTTP/host.domain.com
     $ ipa-getkeytab -s master.domain.com -p HTTP/host.domain.com -k http.keytab
+
+Configure sssd
+===============
+
+iquota-server uses sssd-ifp (SSSD InfoPipe responder) over DBUS to fetch the
+unix groups for a given user. For more information on sssd-ifp see `here
+<https://jhrozek.fedorapeople.org/sssd/1.12.0/man/sssd-ifp.5.html>`_.
+
+Ensure the sssd-dbus package is installed::
+
+    # yum install sssd-dbus
+
+Configure sssd-ifp. Add the following lines to /etc/sssd/sssd.conf::
+
+    [sssd]
+    services = nss, sudo, pam, ssh, ifp
+
+    [ifp]
+    allowed_uids = iquota, root
+
+Restart sssd to make the changes take effect::
+
+    # systemctl restart sssd
+
+You can test to ensure sssd-ifp is configured properly by running the following
+command. The array of unix groups for the user should be displayed::
+
+    # dbus-send --print-reply --system \
+      --dest=org.freedesktop.sssd.infopipe \
+      /org/freedesktop/sssd/infopipe \
+      org.freedesktop.sssd.infopipe.GetUserGroups \
+      string:username
+
+       array [
+          string "physics"
+          string "compsci"
+          string "users"
+       ]
+
+Configure iquota.yaml
+=====================
 
 Edit iquota configuration file. Add host, port, user/pass for OneFS API, path to
 http keytab::
@@ -100,6 +147,9 @@ user (iquota) so need to ensure file perms are set correctly::
     $ cp my.key /etc/iquota/private/my.key
     $ chmod 640 /etc/iquota/private/my.key
     $ chgrp iquota /etc/iquota/private/my.key
+
+Start iquota-server service
+============================
 
 Start iquota-server service::
 
@@ -151,7 +201,8 @@ Configure caching
 ------------------------------------------------------------------------
 
 iquota-server can optionally be configured to cache results for a given time
-period. To enable caching first install redis then update
+period. This helps reduce the load on the OneFS API and provide better iquota
+performance. To enable caching first install redis then update
 /etc/iquota/iquota.yaml.
 
 Install Redis (install from EPEL)::
