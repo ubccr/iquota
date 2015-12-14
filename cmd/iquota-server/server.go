@@ -97,17 +97,27 @@ func Server() {
 		logrus.Fatal(err.Error())
 	}
 
-	logrus.Printf("Running on http://%s:%d", viper.GetString("bind"), viper.GetInt("port"))
-
 	http.Handle("/", middle)
 
 	certFile := viper.GetString("cert")
 	keyFile := viper.GetString("key")
 
 	if certFile != "" && keyFile != "" {
-		http.ListenAndServeTLS(fmt.Sprintf("%s:%d", viper.GetString("bind"), viper.GetInt("port")), certFile, keyFile, nil)
+		logrus.Printf("Listening on https://%s:%d", viper.GetString("bind"), viper.GetInt("port"))
+		err := http.ListenAndServeTLS(fmt.Sprintf("%s:%d", viper.GetString("bind"), viper.GetInt("port")), certFile, keyFile, nil)
+		if err != nil {
+			logrus.WithFields(logrus.Fields{
+				"err": err.Error(),
+			}).Fatal("Failed to run https server")
+		}
 	} else {
+		logrus.Printf("Listening on http://%s:%d", viper.GetString("bind"), viper.GetInt("port"))
 		logrus.Warn("**WARNING*** SSL/TLS not enabled. HTTP communication will not be encrypted and vulnerable to snooping.")
-		http.ListenAndServe(fmt.Sprintf("%s:%d", viper.GetString("bind"), viper.GetInt("port")), nil)
+		err := http.ListenAndServe(fmt.Sprintf("%s:%d", viper.GetString("bind"), viper.GetInt("port")), nil)
+		if err != nil {
+			logrus.WithFields(logrus.Fields{
+				"err": err.Error(),
+			}).Fatal("Failed to run http server")
+		}
 	}
 }
