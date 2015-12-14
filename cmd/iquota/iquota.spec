@@ -39,7 +39,7 @@ rm -rf %{buildroot}
 %doc README.rst AUTHORS.rst ChangeLog.rst iquota.yaml.sample
 %license LICENSE
 %attr(0755,root,root) %{_bindir}/%{name}
-%attr(640,root,iquota) %config(noreplace) %{_sysconfdir}/%{name}/%{name}.yaml
+%attr(644,root,root) %config(noreplace) %{_sysconfdir}/%{name}/%{name}.yaml
 
 %changelog
 * Fri Dec 12 2015  Andrew E. Bruno <aebruno2@buffalo.edu> 0.0.1-1
