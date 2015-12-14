@@ -19,7 +19,7 @@ Linux CLI tools for Isilon OneFS SmartQuota reporting
 getent group iquota &> /dev/null || \
 groupadd -r iquota &> /dev/null
 getent passwd iquota &> /dev/null || \
-useradd -r -g iquota -d %{_datadir}/%{name} -s /sbin/nologin \
+useradd -r -g iquota -d %{_sysconfdir}/iquota -s /sbin/nologin \
         -c 'iquota Server' iquota &> /dev/null
 
 %prep
@@ -47,7 +47,7 @@ After=network.target
 Type=simple
 User=iquota
 Group=iquota
-WorkingDirectory=%{_datadir}/%{name}
+WorkingDirectory=%{_sysconfdir}/iquota
 ExecStart=/bin/bash -c '%{_bindir}/%{name}'
 Restart=on-abort
 
