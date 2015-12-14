@@ -8,6 +8,7 @@ import (
 	"bufio"
 	"bytes"
 	"crypto/tls"
+	"crypto/x509"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -58,6 +59,7 @@ type QuotaClient struct {
 	UserFilter  string
 	GroupFilter string
 	Filesystem  string
+	certPool    *x509.CertPool
 }
 
 func (f *Filesystem) String() string {
@@ -96,8 +98,13 @@ func (c *QuotaClient) printFilesystem(fs *Filesystem) {
 
 func (c *QuotaClient) fetchQuota(url string) (*iquota.QuotaRestResponse, error) {
 	req, err := http.NewRequest("GET", url, nil)
-	//XXX fix me to use cacert
-	tr := &http.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: true}}
+	tr := &http.Transport{TLSClientConfig: &tls.Config{RootCAs: c.certPool}}
+
+	// XXX should we default to this? seems a bit rash? Perhaps make this a config option
+	if c.certPool == nil {
+		tr.TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
+	}
+
 	t := &khttp.Transport{Next: tr}
 	client := &http.Client{Transport: t}
 

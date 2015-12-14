@@ -6,6 +6,9 @@
 package main
 
 import (
+	"crypto/x509"
+	"io/ioutil"
+
 	"github.com/Sirupsen/logrus"
 	"github.com/codegangsta/cli"
 	"github.com/spf13/viper"
@@ -64,6 +67,19 @@ func main() {
 			UserFilter:  c.String("show-user"),
 			GroupFilter: c.String("show-group"),
 			Filesystem:  c.String("filesystem")}
+
+		cert := viper.GetString("iquota_cert")
+		if len(cert) > 0 {
+			pem, err := ioutil.ReadFile(cert)
+			if err != nil {
+				logrus.Fatal("Failed reading cacert file: ", err)
+			}
+
+			client.certPool = x509.NewCertPool()
+			if !client.certPool.AppendCertsFromPEM(pem) {
+				logrus.Fatal("Failed appending cacert file to pool: ", err)
+			}
+		}
 
 		client.Run()
 	}
