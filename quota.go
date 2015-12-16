@@ -140,13 +140,20 @@ type QuotaResponse struct {
 }
 
 // Fetch Quota
-func (c *Client) FetchQuota(path, qtype, persona string, resolveNames bool) (*QuotaResponse, error) {
+func (c *Client) FetchQuota(path, qtype, persona string, resolveNames, exceededOnly bool) (*QuotaResponse, error) {
 	params := url.Values{}
 	params.Add("path", path)
-	params.Add("type", qtype)
-	params.Add("persona", persona)
+	if len(persona) > 0 {
+		params.Add("persona", persona)
+	}
+	if len(qtype) > 0 {
+		params.Add("type", qtype)
+	}
 	if resolveNames {
 		params.Add("resolve_names", "true")
+	}
+	if exceededOnly {
+		params.Add("exceeded", "true")
 	}
 
 	apiUrl := fmt.Sprintf("%s?%s", c.Url(RESOURCE_QUOTAS), params.Encode())
@@ -190,11 +197,16 @@ func (c *Client) FetchQuota(path, qtype, persona string, resolveNames bool) (*Qu
 // Fetch User Quota
 func (c *Client) FetchUserQuota(path, user string) (*QuotaResponse, error) {
 	persona := fmt.Sprintf("USER:%s", user)
-	return c.FetchQuota(path, "user", persona, true)
+	return c.FetchQuota(path, "user", persona, true, false)
 }
 
 // Fetch Group Quota
 func (c *Client) FetchGroupQuota(path, group string) (*QuotaResponse, error) {
 	persona := fmt.Sprintf("GROUP:%s", group)
-	return c.FetchQuota(path, "group", persona, true)
+	return c.FetchQuota(path, "group", persona, true, false)
+}
+
+// Fetch all quotas that have exceeded one or more of their thresholds
+func (c *Client) FetchAllOverQuota(path string) (*QuotaResponse, error) {
+	return c.FetchQuota(path, "", "", true, true)
 }
