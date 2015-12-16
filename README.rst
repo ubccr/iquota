@@ -14,7 +14,7 @@ where Isilon is mounted via nfs on a front end machine running Linux, users
 need a way to check and report on their quotas. This project aims to provide a
 tool very similar to the native quota command in Linux but for Isilon nfs
 mounts. This `post <https://community.emc.com/message/762183#762183>`_ sums up
-essentially what this project aims to provide. 
+essentially what this project aims to provide.  
 
 The following diagram shows the basic architecture of iquota:
 
@@ -218,6 +218,12 @@ Edit /etc/iquota/iquota.yaml and restart::
     enable_caching: true
 
     $ systecmtl restart iquota-server
+
+------------------------------------------------------------------------
+References
+------------------------------------------------------------------------
+
+1. OneFS API Docs - https://community.emc.com/docs/DOC-48273
 
 ------------------------------------------------------------------------
 License
