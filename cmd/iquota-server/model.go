@@ -25,7 +25,15 @@ func (u *User) HasGroup(group string) bool {
 }
 
 func (u *User) IsAdmin() bool {
-	return u.HasGroup(viper.GetString("admin_group"))
+	for _, x := range viper.GetStringSlice("admins") {
+		if x == u.Uid {
+			return true
+		} else if u.HasGroup(x) {
+			return true
+		}
+	}
+
+	return false
 }
 
 func FetchGroups(uid string) ([]string, error) {

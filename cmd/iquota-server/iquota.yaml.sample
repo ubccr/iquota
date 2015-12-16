@@ -50,9 +50,12 @@ onefs_pass: "pass"
 # onefs_cert: "/path/to/cert"
 
 #------------------------------------------------------------------------------
-# Unix admin group (allowed to view quota for any user/group)
+# Unix users and/or groups (allowed to view all quotas)
 #------------------------------------------------------------------------------
-# admin_group: "wheel"
+# admins:
+#    - wheel
+#    - sysadmin
+#    - username
 
 #------------------------------------------------------------------------------
 # Enable caching via redis
