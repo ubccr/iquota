@@ -237,3 +237,48 @@ func GroupQuotaHandler(app *Application) http.Handler {
 		w.Write(out)
 	})
 }
+
+func OverQuotaHandler(app *Application) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		user := context.Get(r, "user").(*User)
+		if user == nil {
+			logrus.Error("user quota handler: user not found in request context")
+			errorHandler(app, w, http.StatusInternalServerError, nil)
+			return
+		}
+
+		if !user.IsAdmin() {
+			errorHandler(app, w, http.StatusBadRequest, &iquota.IsiError{Code: "AEC_BAD_REQUEST", Message: "Access denied"})
+			return
+		}
+
+		qp := new(iquota.QuotaParams)
+		app.decoder.Decode(qp, r.URL.Query())
+
+		c := NewOnefsClient()
+		qres, err := c.FetchAllOverQuota(qp.Path)
+		if err != nil {
+			logrus.WithFields(logrus.Fields{
+				"err": err.Error(),
+			}).Error("Failed to fetch over quota list")
+			if ierr, ok := err.(*iquota.IsiError); ok {
+				errorHandler(app, w, http.StatusBadRequest, ierr)
+			} else {
+				errorHandler(app, w, http.StatusBadRequest, &iquota.IsiError{Code: "AEC_BAD_REQUEST", Message: "Fatal system error"})
+			}
+
+			return
+		}
+
+		qr := &iquota.QuotaRestResponse{Quotas: qres.Quotas}
+		out, err := json.Marshal(qr)
+		if err != nil {
+			logrus.Printf("Error encoding data as json: %s", err)
+			errorHandler(app, w, http.StatusInternalServerError, nil)
+			return
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		w.Write(out)
+	})
+}

@@ -27,7 +27,7 @@ func NewApplication() (*Application, error) {
 
 	c := NewOnefsClient()
 
-	qres, err := c.FetchQuota("", "default-user", "", false)
+	qres, err := c.FetchQuota("", "default-user", "", false, false)
 	if err != nil {
 		return nil, err
 	}
@@ -37,7 +37,7 @@ func NewApplication() (*Application, error) {
 		app.defaultUserQuota[q.Path] = q
 	}
 
-	qres, err = c.FetchQuota("", "default-group", "", false)
+	qres, err = c.FetchQuota("", "default-group", "", false, false)
 	if err != nil {
 		return nil, err
 	}
@@ -76,6 +76,7 @@ func (a *Application) router() *mux.Router {
 	router.Path("/").Handler(KerbAuthRequired(a, IndexHandler(a))).Methods("GET")
 	router.Path("/quota/user").Handler(KerbAuthRequired(a, UserQuotaHandler(a))).Methods("GET")
 	router.Path("/quota/group").Handler(KerbAuthRequired(a, GroupQuotaHandler(a))).Methods("GET")
+	router.Path("/quota/exceeded").Handler(KerbAuthRequired(a, OverQuotaHandler(a))).Methods("GET")
 
 	return router
 }

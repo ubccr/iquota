@@ -30,6 +30,7 @@ import (
 const (
 	RESOURCE_USER_QUOTA  = "/quota/user"
 	RESOURCE_GROUP_QUOTA = "/quota/group"
+	RESOURCE_OVER_QUOTA  = "/quota/exceeded"
 	LONG_FORMAT          = "%-12s%-12s%12s%10s%10s%10s%10s%10s\n"
 	SHORT_FORMAT         = "%-12s%-12s%12s%10s%10s%10s\n"
 )
@@ -56,6 +57,7 @@ type QuotaClient struct {
 	User        bool
 	Long        bool
 	FullPath    bool
+	OverQuota   bool
 	UserFilter  string
 	GroupFilter string
 	Filesystem  string
@@ -380,6 +382,35 @@ func (c *QuotaClient) printGroupQuota(username string, mounts []*Filesystem) {
 	}
 }
 
+func (c *QuotaClient) exportOverQuota(mounts []*Filesystem) {
+	params := url.Values{}
+	if len(mounts) == 1 {
+		params.Add("path", mounts[0].Path)
+	}
+
+	apiUrl := fmt.Sprintf("%s%s?%s", viper.GetString("iquota_url"), RESOURCE_OVER_QUOTA, params.Encode())
+
+	qr, err := c.fetchQuota(apiUrl)
+	if err != nil {
+		if ierr, ok := err.(*iquota.IsiError); ok {
+			if ierr.Message == "Access denied" {
+				logrus.Fatal("You must be an admin user to peform this operation.")
+			}
+		}
+
+		if strings.Contains(err.Error(), "No Kerberos credentials available") {
+			logrus.Fatal("No Kerberos credentials available. Please run kinit")
+		}
+
+		logrus.Fatal(err)
+	}
+
+	enc := json.NewEncoder(os.Stdout)
+	if err := enc.Encode(qr.Quotas); err != nil {
+		logrus.Fatal(err)
+	}
+}
+
 func (c *QuotaClient) Run() {
 	uid, err := user.Current()
 	if err != nil {
@@ -412,6 +443,11 @@ func (c *QuotaClient) Run() {
 			}
 		}
 		mounts = []*Filesystem{fs}
+	}
+
+	if c.OverQuota {
+		c.exportOverQuota(mounts)
+		return
 	}
 
 	if !c.Group && len(c.GroupFilter) == 0 && (c.User || len(c.UserFilter) > 0) {

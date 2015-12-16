@@ -142,7 +142,9 @@ type QuotaResponse struct {
 // Fetch Quota
 func (c *Client) FetchQuota(path, qtype, persona string, resolveNames, exceededOnly bool) (*QuotaResponse, error) {
 	params := url.Values{}
-	params.Add("path", path)
+	if len(path) > 0 {
+		params.Add("path", path)
+	}
 	if len(persona) > 0 {
 		params.Add("persona", persona)
 	}
