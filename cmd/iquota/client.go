@@ -31,8 +31,8 @@ const (
 	RESOURCE_USER_QUOTA  = "/quota/user"
 	RESOURCE_GROUP_QUOTA = "/quota/group"
 	RESOURCE_OVER_QUOTA  = "/quota/exceeded"
-	LONG_FORMAT          = "%-12s%-12s%12s%10s%10s%10s%10s%10s\n"
-	SHORT_FORMAT         = "%-12s%-12s%12s%10s%10s%10s\n"
+	LONG_FORMAT          = "%-12s%-12s%15s%10s%10s%10s%10s%12s\n"
+	SHORT_FORMAT         = "%-12s%-12s%15s%10s%10s%12s\n"
 )
 
 var (
@@ -211,7 +211,7 @@ func (c *QuotaClient) printQuota(name string, quota *iquota.Quota) {
 			time.Unix(int64(quota.Threshold.SoftLastExceeded), 0).Add(time.Duration(quota.Threshold.SoftGrace)*time.Second),
 			now,
 			"ago",
-			"from now")
+			"")
 	} else {
 		grace = humanize.RelTime(graceTime, now, "", "")
 	}
