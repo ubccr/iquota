@@ -55,6 +55,7 @@ type QuotaClient struct {
 	Verbose     bool
 	Group       bool
 	User        bool
+	Default     bool
 	Long        bool
 	FullPath    bool
 	OverQuota   bool
@@ -311,7 +312,7 @@ func (c *QuotaClient) printUserQuota(username string, mounts []*Filesystem) {
 		}
 
 		c.printFilesystem(fs)
-		if qr.Default != nil {
+		if qr.Default != nil && c.Default {
 			c.printDefaultQuota(qr.Default)
 		}
 		for _, quota := range qr.Quotas {
@@ -369,7 +370,7 @@ func (c *QuotaClient) printGroupQuota(username string, mounts []*Filesystem) {
 		}
 
 		c.printFilesystem(fs)
-		if qr.Default != nil {
+		if qr.Default != nil && c.Default {
 			c.printDefaultQuota(qr.Default)
 		}
 		for _, quota := range qr.Quotas {
