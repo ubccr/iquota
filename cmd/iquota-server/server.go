@@ -74,6 +74,7 @@ func (a *Application) router() *mux.Router {
 		w.WriteHeader(http.StatusNotFound)
 	})
 	router.Path("/").Handler(KerbAuthRequired(a, IndexHandler(a))).Methods("GET")
+	router.Path("/quota").Handler(KerbAuthRequired(a, AllQuotaHandler(a))).Methods("GET")
 	router.Path("/quota/user").Handler(KerbAuthRequired(a, UserQuotaHandler(a))).Methods("GET")
 	router.Path("/quota/group").Handler(KerbAuthRequired(a, GroupQuotaHandler(a))).Methods("GET")
 	router.Path("/quota/exceeded").Handler(KerbAuthRequired(a, OverQuotaHandler(a))).Methods("GET")

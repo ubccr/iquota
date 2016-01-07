@@ -242,7 +242,7 @@ func OverQuotaHandler(app *Application) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		user := context.Get(r, "user").(*User)
 		if user == nil {
-			logrus.Error("user quota handler: user not found in request context")
+			logrus.Error("over quota handler: user not found in request context")
 			errorHandler(app, w, http.StatusInternalServerError, nil)
 			return
 		}
@@ -271,6 +271,73 @@ func OverQuotaHandler(app *Application) http.Handler {
 		}
 
 		qr := &iquota.QuotaRestResponse{Quotas: qres.Quotas}
+		out, err := json.Marshal(qr)
+		if err != nil {
+			logrus.Printf("Error encoding data as json: %s", err)
+			errorHandler(app, w, http.StatusInternalServerError, nil)
+			return
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		w.Write(out)
+	})
+}
+
+func AllQuotaHandler(app *Application) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		user := context.Get(r, "user").(*User)
+		if user == nil {
+			logrus.Error("all quota handler: user not found in request context")
+			errorHandler(app, w, http.StatusInternalServerError, nil)
+			return
+		}
+
+		if !user.IsAdmin() {
+			errorHandler(app, w, http.StatusBadRequest, &iquota.IsiError{Code: "AEC_BAD_REQUEST", Message: "Access denied"})
+			return
+		}
+
+		qp := new(iquota.QuotaParams)
+		app.decoder.Decode(qp, r.URL.Query())
+
+		c := NewOnefsClient()
+		qres, err := c.FetchQuota(qp.Path, qp.Type, "", true, false)
+		if err != nil {
+			logrus.WithFields(logrus.Fields{
+				"err": err.Error(),
+			}).Error("Failed to all quotas")
+			if ierr, ok := err.(*iquota.IsiError); ok {
+				errorHandler(app, w, http.StatusBadRequest, ierr)
+			} else {
+				errorHandler(app, w, http.StatusBadRequest, &iquota.IsiError{Code: "AEC_BAD_REQUEST", Message: "Fatal system error"})
+			}
+
+			return
+		}
+
+		qr := &iquota.QuotaRestResponse{Quotas: qres.Quotas}
+
+		for {
+			if len(qres.Resume) == 0 {
+				break
+			}
+			qres, err = c.FetchQuotaResume(qres.Resume)
+			if err != nil {
+				logrus.WithFields(logrus.Fields{
+					"err": err.Error(),
+				}).Error("Failed to fetch using resume")
+				if ierr, ok := err.(*iquota.IsiError); ok {
+					errorHandler(app, w, http.StatusBadRequest, ierr)
+				} else {
+					errorHandler(app, w, http.StatusBadRequest, &iquota.IsiError{Code: "AEC_BAD_REQUEST", Message: "Fatal system error"})
+				}
+
+				return
+			}
+
+			qr.Quotas = append(qr.Quotas, qres.Quotas...)
+		}
+
 		out, err := json.Marshal(qr)
 		if err != nil {
 			logrus.Printf("Error encoding data as json: %s", err)
