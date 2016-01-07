@@ -139,25 +139,8 @@ type QuotaResponse struct {
 	Resume string `json:"resume"`
 }
 
-// Fetch Quota
-func (c *Client) FetchQuota(path, qtype, persona string, resolveNames, exceededOnly bool) (*QuotaResponse, error) {
-	params := url.Values{}
-	if len(path) > 0 {
-		params.Add("path", path)
-	}
-	if len(persona) > 0 {
-		params.Add("persona", persona)
-	}
-	if len(qtype) > 0 {
-		params.Add("type", qtype)
-	}
-	if resolveNames {
-		params.Add("resolve_names", "true")
-	}
-	if exceededOnly {
-		params.Add("exceeded", "true")
-	}
-
+// Query quota endpoint with params
+func (c *Client) fetchQuotaUrl(params url.Values) (*QuotaResponse, error) {
 	apiUrl := fmt.Sprintf("%s?%s", c.Url(RESOURCE_QUOTAS), params.Encode())
 
 	req, err := c.getRequest(apiUrl)
@@ -194,6 +177,35 @@ func (c *Client) FetchQuota(path, qtype, persona string, resolveNames, exceededO
 	}
 
 	return &qres, nil
+}
+
+// Fetch Quota
+func (c *Client) FetchQuota(path, qtype, persona string, resolveNames, exceededOnly bool) (*QuotaResponse, error) {
+	params := url.Values{}
+	if len(path) > 0 {
+		params.Add("path", path)
+	}
+	if len(persona) > 0 {
+		params.Add("persona", persona)
+	}
+	if len(qtype) > 0 {
+		params.Add("type", qtype)
+	}
+	if resolveNames {
+		params.Add("resolve_names", "true")
+	}
+	if exceededOnly {
+		params.Add("exceeded", "true")
+	}
+
+	return c.fetchQuotaUrl(params)
+}
+
+// Continue fetching quotas from the previous request (
+func (c *Client) FetchQuotaResume(resume string) (*QuotaResponse, error) {
+	params := url.Values{}
+	params.Add("resume", resume)
+	return c.fetchQuotaUrl(params)
 }
 
 // Fetch User Quota

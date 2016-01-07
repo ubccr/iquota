@@ -7,6 +7,7 @@ package iquota
 type QuotaParams struct {
 	User  string `schema:"user"`
 	Group string `schema:"group"`
+	Type  string `schema:"type"`
 	Path  string `schema:"path"`
 }
 
