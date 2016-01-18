@@ -3,7 +3,7 @@
 
 Summary:       Isilon OneFS SmartQuota report CLI tool
 Name:          iquota
-Version:       0.0.1
+Version:       0.0.2
 Release:       1%{?dist}
 License:       BSD
 Group:         Applications/Internet
@@ -42,5 +42,9 @@ rm -rf %{buildroot}
 %attr(644,root,root) %config(noreplace) %{_sysconfdir}/%{name}/%{name}.yaml
 
 %changelog
+* Mon Jan 18 2016  Andrew E. Bruno <aebruno2@buffalo.edu> 0.0.2-1
+- New Features
+    - Add option to fetch all quotas that have exceeded one or more thresholds
+    - Add option to print default user/group quotas. Do not show by default
 * Fri Dec 12 2015  Andrew E. Bruno <aebruno2@buffalo.edu> 0.0.1-1
 - Initial release

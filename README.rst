@@ -54,7 +54,7 @@ flavor of Linux*
 
 Download the RPM release `here <https://github.com/ubccr/iquota/releases>`_::
 
-  $ rpm -Uvh iquota-server-0.0.1-1.el7.centos.x86_64.rpm
+  $ rpm -Uvh iquota-server-0.x.x-x.el7.centos.x86_64.rpm
 
 Create user account for accessing OneFS API
 ============================================
@@ -167,7 +167,7 @@ Install iquota on all client machines mounting /ifs over nfs
 On all client machines mounting Isilon /ifs over nfs install the iquota client.
 Download the RPM release `here <https://github.com/ubccr/iquota/releases>`_::
 
-  $ rpm -Uvh iquota-0.0.1-1.el7.centos.x86_64.rpm
+  $ rpm -Uvh iquota-0.x.x-x.el7.centos.x86_64.rpm
 
 Edit iquota configuration file. Add URL for iquota-server::
 
