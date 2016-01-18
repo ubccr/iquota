@@ -7,6 +7,7 @@ package main
 import (
 	"encoding/json"
 	"net/http"
+	"strings"
 
 	"github.com/Sirupsen/logrus"
 	"github.com/gorilla/context"
@@ -165,6 +166,9 @@ func GroupQuotaHandler(app *Application) http.Handler {
 		gquotas := make([]*iquota.Quota, 0)
 
 		for _, group := range groups {
+
+			// Ensure group names don't contain spaces
+			group = strings.Replace(group, " ", "", -1)
 
 			var qres *iquota.QuotaResponse
 
