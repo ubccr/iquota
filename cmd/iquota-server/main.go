@@ -29,7 +29,7 @@ func main() {
 	app.Name = "iquota-server"
 	app.Authors = []cli.Author{cli.Author{Name: "Andrew E. Bruno", Email: "aebruno2@buffalo.edu"}}
 	app.Usage = "iquota-server"
-	app.Version = "0.0.2"
+	app.Version = "0.0.3"
 	app.Flags = []cli.Flag{
 		&cli.StringFlag{Name: "conf,c", Usage: "Path to conf file"},
 		&cli.BoolFlag{Name: "debug,d", Usage: "Print debug messages"},

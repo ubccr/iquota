@@ -3,7 +3,7 @@
 
 Summary:       Proxy server for Isilon OneFS SmartQuota reporting
 Name:          iquota-server
-Version:       0.0.2
+Version:       0.0.3
 Release:       1%{?dist}
 License:       BSD
 Group:         Applications/Internet
@@ -67,6 +67,9 @@ rm -rf %{buildroot}
 %attr(644,root,root) %{_usr}/lib/systemd/system/%{name}.service
 
 %changelog
+* Tue Oct 04 2016  Andrew E. Bruno <aebruno2@buffalo.edu> 0.0.3-1
+- New Features
+    - Add support for detecting nfsv4 mounts in iquota client
 * Mon Jan 18 2016  Andrew E. Bruno <aebruno2@buffalo.edu> 0.0.2-1
 - New Features
     - Add option to fetch all quotas that have exceeded one or more thresholds
