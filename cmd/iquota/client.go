@@ -162,7 +162,7 @@ func (c *QuotaClient) parseMtab() ([]*Filesystem, error) {
 	scanner := bufio.NewScanner(mtab)
 	for scanner.Scan() {
 		fields := strings.Split(scanner.Text(), " ")
-		if fields[2] == "nfs" {
+		if fields[2] == "nfs" || fields[2] == "nfs4" {
 			parts := strings.Split(fields[0], ":")
 			fs := &Filesystem{
 				Host:       parts[0],
