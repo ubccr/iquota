@@ -9,9 +9,9 @@ import (
 	"crypto/x509"
 	"io/ioutil"
 
-	"github.com/Sirupsen/logrus"
-	"github.com/codegangsta/cli"
+	"github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
+	"github.com/urfave/cli"
 )
 
 func init() {
@@ -27,7 +27,7 @@ func main() {
 	app.Name = "iquota"
 	app.Authors = []cli.Author{cli.Author{Name: "Andrew E. Bruno", Email: "aebruno2@buffalo.edu"}}
 	app.Usage = "displays users' disk usage and limits.  By default only the user quotas are printed."
-	app.Version = "0.0.3"
+	app.Version = "0.0.4"
 	app.HideVersion = true
 	app.Flags = []cli.Flag{
 		&cli.StringFlag{Name: "conf,c", Usage: "Path to conf file"},

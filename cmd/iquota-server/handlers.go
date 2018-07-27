@@ -9,8 +9,8 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/Sirupsen/logrus"
 	"github.com/gorilla/context"
+	"github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 	"github.com/ubccr/iquota"
 )
@@ -161,6 +161,11 @@ func GroupQuotaHandler(app *Application) http.Handler {
 			groups = []string{qp.Group}
 		}
 
+		logrus.WithFields(logrus.Fields{
+			"groups": groups,
+			"user":   user.Uid,
+		}).Info("User groups")
+
 		c := NewOnefsClient()
 		c.NewSession()
 		gquotas := make([]*iquota.Quota, 0)
@@ -205,7 +210,7 @@ func GroupQuotaHandler(app *Application) http.Handler {
 						logrus.WithFields(logrus.Fields{
 							"err":   ierr.Error(),
 							"group": group,
-						}).Error("Failed to fetch group quota")
+						}).Error("Failed to fetch group quota with isi error")
 						errorHandler(app, w, http.StatusBadRequest, ierr)
 					} else {
 						logrus.WithFields(logrus.Fields{

@@ -3,7 +3,7 @@
 
 Summary:       Isilon OneFS SmartQuota report CLI tool
 Name:          iquota
-Version:       0.0.3
+Version:       0.0.4
 Release:       1%{?dist}
 License:       BSD
 Group:         Applications/Internet
@@ -42,6 +42,9 @@ rm -rf %{buildroot}
 %attr(644,root,root) %config(noreplace) %{_sysconfdir}/%{name}/%{name}.yaml
 
 %changelog
+* Fri Jul 27 2018  Andrew E. Bruno <aebruno2@buffalo.edu> 0.0.4-1
+- Bug fix
+    - OneFS sessions not working. Use basic auth
 * Tue Oct 04 2016  Andrew E. Bruno <aebruno2@buffalo.edu> 0.0.3-1
 - New Features
     - Add support for detecting nfsv4 mounts in iquota client

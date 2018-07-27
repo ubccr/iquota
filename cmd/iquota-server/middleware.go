@@ -9,8 +9,8 @@ import (
 	"os"
 	"strings"
 
-	"github.com/Sirupsen/logrus"
 	"github.com/gorilla/context"
+	"github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 	"github.com/ubccr/kerby"
 )

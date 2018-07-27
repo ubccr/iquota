@@ -8,10 +8,10 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/Sirupsen/logrus"
 	"github.com/carbocation/interpose"
 	"github.com/gorilla/mux"
 	"github.com/gorilla/schema"
+	"github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 	"github.com/ubccr/iquota"
 )

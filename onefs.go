@@ -16,6 +16,8 @@ import (
 	"io/ioutil"
 	"net/http"
 	"regexp"
+
+	"github.com/sirupsen/logrus"
 )
 
 const (
@@ -92,10 +94,23 @@ func (c *Client) getRequest(url string) (*http.Request, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	logrus.WithFields(logrus.Fields{
+		"url": req,
+	}).Info("New get request")
+
 	req.Header.Set("Accept", "application/json")
 	if len(c.session) > 0 {
-		req.Header.Set("Cookie", fmt.Sprintf("isisessid==%s", c.session))
+		logrus.WithFields(logrus.Fields{
+			"session": c.session,
+		}).Info("get request using existing session")
+		// XXX As of OneFS 8.0.0.6 this no longer works for some reason?
+		// XXX short term fix is to take a performance hit and just use basic auth each time.
+		// XXX more investigation is needed
+		// req.Header.Set("Cookie", fmt.Sprintf("isisessid=%s", c.session))
+		req.SetBasicAuth(c.user, c.passwd)
 	} else if len(c.user) > 0 && len(c.passwd) > 0 {
+		logrus.Info("get request using basic auth")
 		req.SetBasicAuth(c.user, c.passwd)
 	}
 
@@ -136,6 +151,9 @@ func (c *Client) NewSession() (string, error) {
 	if len(cookie) == 0 {
 		return "", errors.New("OneFS login failed emtpy set-cookie header")
 	}
+	logrus.WithFields(logrus.Fields{
+		"cookie": cookie,
+	}).Info("New session cookie")
 
 	session := ""
 	matches := isiSessionPattern.FindStringSubmatch(cookie)
@@ -148,6 +166,10 @@ func (c *Client) NewSession() (string, error) {
 	}
 
 	c.session = session
+
+	logrus.WithFields(logrus.Fields{
+		"session": session,
+	}).Info("New session created successfully")
 
 	return session, nil
 }
