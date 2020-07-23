@@ -15,4 +15,6 @@ require (
 	github.com/spf13/viper v1.7.0
 	github.com/ubccr/kerby v0.0.0-20170626144437-201a958fc453
 	github.com/urfave/cli v1.22.4
+	golang.org/x/crypto v0.0.0-20190605123033-f99c8df09eb5
+	gopkg.in/alecthomas/kingpin.v2 v2.2.6
 )
