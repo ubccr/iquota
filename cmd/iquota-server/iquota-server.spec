@@ -3,7 +3,7 @@
 
 Summary:       Proxy server for Isilon OneFS SmartQuota reporting
 Name:          iquota-server
-Version:       0.0.4
+Version:       0.0.5
 Release:       1%{?dist}
 License:       BSD
 Group:         Applications/Internet
@@ -67,6 +67,9 @@ rm -rf %{buildroot}
 %attr(644,root,root) %{_usr}/lib/systemd/system/%{name}.service
 
 %changelog
+* Thu Jul 23 2020  Andrew E. Bruno <aebruno2@buffalo.edu> 0.0.5-1
+- New Features
+    - Add support to client for panfs mounts
 * Fri Jul 27 2018  Andrew E. Bruno <aebruno2@buffalo.edu> 0.0.4-1
 - Bug fix
     - OneFS sessions not working. Use basic auth
