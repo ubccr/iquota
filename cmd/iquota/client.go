@@ -31,8 +31,8 @@ const (
 	RESOURCE_USER_QUOTA  = "/quota/user"
 	RESOURCE_GROUP_QUOTA = "/quota/group"
 	RESOURCE_OVER_QUOTA  = "/quota/exceeded"
-	LONG_FORMAT          = "%-12s%-12s%15s%10s%10s%10s%10s%12s\n"
-	SHORT_FORMAT         = "%-12s%-12s%15s%10s%10s%12s\n"
+	LONG_FORMAT          = "%-40s%-12s%15s%10s%10s%10s%10s%12s\n"
+	SHORT_FORMAT         = "%-40s%-12s%15s%10s%10s%12s\n"
 )
 
 var (
@@ -181,6 +181,21 @@ func (c *QuotaClient) parseMtab() ([]*Filesystem, error) {
 				// XXX only include isilon mounts. Will this always be /ifs?
 				mounts = append(mounts, fs)
 			}
+		} else if fields[2] == "panfs" {
+			fs := &Filesystem{
+				Host:       fields[0],
+				Path:       "/panasas",
+				MountPoint: fields[1],
+				UserQuota:  true,
+				GroupQuota: true,
+			}
+
+			defaults, ok := defaultFs[fs.Path]
+			if ok {
+				fs.UserQuota = strings.Contains(defaults, "user")
+				fs.GroupQuota = strings.Contains(defaults, "group")
+				mounts = append(mounts, fs)
+			}
 		}
 	}
 
@@ -200,7 +215,12 @@ func (c *QuotaClient) printHeader(label string) {
 	fmt.Printf(c.format(), "Filesystem ", label, "files", "used", "limit", "grace ")
 }
 
-func (c *QuotaClient) printQuota(name string, quota *iquota.Quota) {
+func (c *QuotaClient) printQuota(fs *Filesystem, name string, quota *iquota.Quota) {
+	fsPath := ""
+	if fs.Path != quota.Path {
+		fsPath = quota.Path
+	}
+
 	now := time.Now()
 	graceTime := now.Add(time.Duration(quota.Threshold.SoftGrace) * time.Second)
 	var grace string
@@ -213,30 +233,41 @@ func (c *QuotaClient) printQuota(name string, quota *iquota.Quota) {
 			now,
 			"ago",
 			"")
+	} else if quota.Threshold.SoftGrace == 0 {
+		grace = ""
 	} else {
 		grace = humanize.RelTime(graceTime, now, "", "")
 	}
 
+	soft := ""
+	hard := ""
+	if quota.Threshold.Soft > 0 {
+		soft = humanize.Bytes(uint64(quota.Threshold.Soft))
+	}
+	if quota.Threshold.Hard > 0 {
+		hard = humanize.Bytes(uint64(quota.Threshold.Hard))
+	}
+
 	if c.Long {
 		printer.Printf(c.format(),
-			"",
+			fsPath,
 			name,
 			humanize.Comma(int64(quota.Usage.Inodes)),
 			humanize.Bytes(uint64(quota.Usage.Logical)),
 			humanize.Bytes(uint64(quota.Usage.Physical)),
-			humanize.Bytes(uint64(quota.Threshold.Soft)),
-			humanize.Bytes(uint64(quota.Threshold.Hard)),
+			soft,
+			hard,
 			grace)
 
 		return
 	}
 
 	printer.Printf(c.format(),
-		"",
+		fsPath,
 		name,
 		humanize.Comma(int64(quota.Usage.Inodes)),
 		humanize.Bytes(uint64(quota.Usage.Logical)),
-		humanize.Bytes(uint64(quota.Threshold.Soft)),
+		soft,
 		grace)
 }
 
@@ -286,7 +317,7 @@ func (c *QuotaClient) printUserQuota(username string, mounts []*Filesystem) {
 		if err != nil {
 			if ierr, ok := err.(*iquota.IsiError); ok {
 				if ierr.Code == "AEC_NOT_FOUND" {
-					logrus.Fatal("Invalid user: ", username)
+					logrus.Warn("Invalid user: ", username)
 				} else if ierr.Message == "Access denied" {
 					logrus.Fatal("You must be an admin user to peform this operation.")
 				}
@@ -296,7 +327,8 @@ func (c *QuotaClient) printUserQuota(username string, mounts []*Filesystem) {
 				logrus.Fatal("No Kerberos credentials available. Please run kinit")
 			}
 
-			logrus.Fatal(err)
+			logrus.Warn(err)
+			return
 		}
 
 		if len(qr.Quotas) == 0 && qr.Default == nil {
@@ -316,7 +348,7 @@ func (c *QuotaClient) printUserQuota(username string, mounts []*Filesystem) {
 			c.printDefaultQuota(qr.Default)
 		}
 		for _, quota := range qr.Quotas {
-			c.printQuota(username, quota)
+			c.printQuota(fs, username, quota)
 		}
 	}
 }
@@ -378,7 +410,7 @@ func (c *QuotaClient) printGroupQuota(username string, mounts []*Filesystem) {
 			if len(gname) == 0 && quota.Persona != nil {
 				gname = quota.Persona.Name
 			}
-			c.printQuota(gname, quota)
+			c.printQuota(fs, gname, quota)
 		}
 	}
 }
