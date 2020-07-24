@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"os"
 	"os/user"
 	"strconv"
 	"strings"
@@ -320,6 +321,7 @@ func main() {
 		).Default("500").Envar("IPANFS_EXPIRE").Int()
 
 		debug = kingpin.Flag("debug", "enable debug mode").Default("false").Bool()
+		noop  = kingpin.Flag("noop", "Dump quota report from panfs and exit").Default("false").Bool()
 	)
 
 	kingpin.HelpFlag.Short('h')
@@ -334,6 +336,11 @@ func main() {
 	out, err := fetchQuotaReport(*address, *panUser, *panPass, *key)
 	if err != nil {
 		log.Fatalf("Failed to fetch quota report from panfs: %s", err)
+	}
+
+	if *noop {
+		fmt.Println(out.String())
+		os.Exit(0)
 	}
 
 	cache := &Cache{expire: *expire}
