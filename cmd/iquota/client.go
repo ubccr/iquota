@@ -376,17 +376,16 @@ func (c *QuotaClient) printGroupQuota(username string, mounts []*Filesystem) {
 		if err != nil {
 			if ierr, ok := err.(*iquota.IsiError); ok {
 				if ierr.Code == "AEC_NOT_FOUND" {
-					logrus.Fatal("Invalid group: ", group)
+					logrus.Warn("Invalid group: ", group)
 				} else if ierr.Message == "Access denied" {
 					logrus.Fatal("You must be an admin user to peform this operation.")
 				}
-			}
-
-			if strings.Contains(err.Error(), "No Kerberos credentials available") {
+			} else if strings.Contains(err.Error(), "No Kerberos credentials available") {
 				logrus.Fatal("No Kerberos credentials available. Please run kinit")
+			} else {
+				logrus.Fatal(err)
 			}
-
-			logrus.Fatal(err)
+			continue
 		}
 
 		if len(qr.Quotas) == 0 && qr.Default == nil {
