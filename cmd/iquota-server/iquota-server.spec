@@ -64,6 +64,7 @@ rm -rf %{buildroot}
 %doc README.rst AUTHORS.rst ChangeLog.rst iquota.yaml.sample
 %license LICENSE
 %attr(0755,root,root) %{_bindir}/%{name}
+%attr(0755,root,root) %{_bindir}/ipanfs
 %attr(640,root,iquota) %config(noreplace) %{_sysconfdir}/iquota/iquota.yaml
 %attr(644,root,root) %{_usr}/lib/systemd/system/%{name}.service
 
