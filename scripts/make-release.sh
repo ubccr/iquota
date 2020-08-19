@@ -29,6 +29,7 @@ rm -Rf ${SERVER_DIR}
 mkdir -p ${REL_DIR}
 
 cp ./cmd/iquota-server/iquota-server ${REL_DIR}/ 
+cp ./cmd/ipanfs/ipanfs ${REL_DIR}/ 
 cp ./cmd/iquota-server/iquota.yaml.sample ${REL_DIR}/ 
 cp ./cmd/iquota-server/iquota-server.spec ${REL_DIR}/
 cp ./README.rst ${REL_DIR}/ 

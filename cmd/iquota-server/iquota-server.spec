@@ -37,6 +37,7 @@ install -d %{buildroot}%{_usr}/lib/systemd/system
 
 cp -a ./iquota.yaml.sample %{buildroot}%{_sysconfdir}/iquota/iquota.yaml
 cp -a ./%{name} %{buildroot}%{_bindir}/%{name}
+cp -a ./ipanfs %{buildroot}%{_bindir}/ipanfs
 cat << EOF > %{buildroot}%{_usr}/lib/systemd/system/%{name}.service
 [Unit]
 Description=iquota server
