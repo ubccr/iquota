@@ -347,6 +347,19 @@ func AllQuotaHandler(app *Application) http.Handler {
 			qr.Quotas = append(qr.Quotas, qres.Quotas...)
 		}
 
+		if viper.GetBool("enable_cache") {
+			// Include quotas from cache
+			cqr, err := FetchAllQuotaCache()
+			if err != nil {
+				logrus.Errorf("Error fetching quotas from cache: %s", err)
+				errorHandler(app, w, http.StatusInternalServerError, nil)
+				return
+			}
+
+			logrus.Infof("Found %d quotas from cache", len(cqr.Quotas))
+			qr.Quotas = append(qr.Quotas, cqr.Quotas...)
+		}
+
 		out, err := json.Marshal(qr)
 		if err != nil {
 			logrus.Printf("Error encoding data as json: %s", err)
