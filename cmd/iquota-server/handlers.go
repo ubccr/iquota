@@ -349,7 +349,7 @@ func AllQuotaHandler(app *Application) http.Handler {
 
 		if viper.GetBool("enable_cache") {
 			// Include quotas from cache
-			cqr, err := FetchAllQuotaCache()
+			cqr, err := FetchAllQuotaCache(qp.Type)
 			if err != nil {
 				logrus.Errorf("Error fetching quotas from cache: %s", err)
 				errorHandler(app, w, http.StatusInternalServerError, nil)

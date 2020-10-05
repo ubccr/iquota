@@ -108,7 +108,7 @@ func SetUserQuotaCache(path, user string, qr *iquota.QuotaResponse) error {
 	return redisSet(fmt.Sprintf("%s:USER:%s", path, user), qr, viper.GetInt("cache_expire"))
 }
 
-func FetchAllQuotaCache() (*iquota.QuotaResponse, error) {
+func FetchAllQuotaCache(qtype string) (*iquota.QuotaResponse, error) {
 	logrus.Info("Fetching all keys from redis")
 	qr := &iquota.QuotaResponse{}
 
@@ -134,6 +134,10 @@ func FetchAllQuotaCache() (*iquota.QuotaResponse, error) {
 			// are ONLY in cache. Do avoid adding duplications to the response
 			// we just include panfs here
 			if !strings.HasPrefix(key, "/panasas") {
+				continue
+			}
+
+			if !strings.Contains(strings.ToLower(key), strings.ToLower(qtype)) {
 				continue
 			}
 
