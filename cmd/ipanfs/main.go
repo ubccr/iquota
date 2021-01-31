@@ -29,17 +29,6 @@ var (
 	SkipGroups    = []string{"wheel"}
 )
 
-type QuotaMap map[string][]*iquota.Quota
-
-func (qm QuotaMap) add(key string, quota *iquota.Quota) {
-	_, ok := qm[key]
-	if !ok {
-		qm[key] = make([]*iquota.Quota, 0)
-	}
-
-	qm[key] = append(qm[key], quota)
-}
-
 func skip(list []string, name string) bool {
 	for _, x := range list {
 		if x == name {
@@ -50,7 +39,7 @@ func skip(list []string, name string) bool {
 	return false
 }
 
-func cacheGroupQuota(cache *Cache, prefix string, report io.Reader) error {
+func cacheGroupQuota(cache *iquota.Cache, prefix string, report io.Reader) error {
 	scanner := bufio.NewScanner(report)
 	for scanner.Scan() {
 		line := scanner.Text()
@@ -58,8 +47,6 @@ func cacheGroupQuota(cache *Cache, prefix string, report io.Reader) error {
 			break
 		}
 	}
-
-	groups := make(QuotaMap, 0)
 
 	for scanner.Scan() {
 		line := scanner.Text()
@@ -95,53 +82,32 @@ func cacheGroupQuota(cache *Cache, prefix string, report io.Reader) error {
 
 		bytesUsed, _ := strconv.Atoi(cols[5])
 		soft, _ := strconv.Atoi(cols[6])
-		softPct, _ := strconv.Atoi(cols[7])
+		//softPct, _ := strconv.Atoi(cols[7])
 		hard, _ := strconv.Atoi(cols[8])
-		hardPct, _ := strconv.Atoi(cols[9])
+		//hardPct, _ := strconv.Atoi(cols[9])
 		filesUsed, _ := strconv.Atoi(cols[10])
 
-		quota := &iquota.Quota{
-			Enforced: true,
-			Path:     path,
-			Type:     "group",
-			Persona: &iquota.Persona{
-				Id:   groupname,
-				Name: groupname,
-				Type: "group",
-			},
-			Threshold: &iquota.Threshold{
-				Hard:         hard,
-				HardExceeded: hardPct >= 100,
-				Soft:         soft,
-				SoftExceeded: softPct >= 100,
-			},
-			Usage: &iquota.Usage{
-				Inodes:   filesUsed,
-				Logical:  bytesUsed,
-				Physical: bytesUsed,
-			},
+		quota := &iquota.IQuota{
+			Path:       path,
+			HardLimit:  hard,
+			SoftLimit:  soft,
+			Used:       bytesUsed,
+			UsedInodes: filesUsed,
 		}
 
-		groups.add(groupname, quota)
-
-	}
-
-	for groupname, quotas := range groups {
-		qr := &iquota.QuotaResponse{Errors: nil, Resume: "", Quotas: quotas}
-		err := cache.SetGroupQuotaCache(prefix, groupname, qr)
+		err := cache.SetDirectoryQuotaCache(path, quota)
 		if err != nil {
 			log.WithFields(log.Fields{
-				"path":  prefix,
-				"group": groupname,
+				"path":  path,
 				"error": err,
-			}).Error("Failed to set group quota cache in redis")
+			}).Error("Failed to set panfs directory quota cache in redis")
 		}
 	}
 
 	return nil
 }
 
-func cacheUserQuota(cache *Cache, prefix string, report io.Reader) error {
+func cacheUserQuota(cache *iquota.Cache, prefix string, report io.Reader) error {
 	scanner := bufio.NewScanner(report)
 	for scanner.Scan() {
 		line := scanner.Text()
@@ -149,8 +115,6 @@ func cacheUserQuota(cache *Cache, prefix string, report io.Reader) error {
 			break
 		}
 	}
-
-	users := make(QuotaMap, 0)
 
 	for scanner.Scan() {
 		line := scanner.Text()
@@ -190,45 +154,25 @@ func cacheUserQuota(cache *Cache, prefix string, report io.Reader) error {
 
 		bytesUsed, _ := strconv.Atoi(cols[5])
 		soft, _ := strconv.Atoi(cols[6])
-		softPct, _ := strconv.Atoi(cols[7])
+		//softPct, _ := strconv.Atoi(cols[7])
 		hard, _ := strconv.Atoi(cols[8])
-		hardPct, _ := strconv.Atoi(cols[9])
+		//hardPct, _ := strconv.Atoi(cols[9])
 		filesUsed, _ := strconv.Atoi(cols[10])
 
-		quota := &iquota.Quota{
-			Enforced: true,
-			Path:     path,
-			Type:     "user",
-			Persona: &iquota.Persona{
-				Id:   username,
-				Name: username,
-				Type: "user",
-			},
-			Threshold: &iquota.Threshold{
-				Hard:         hard,
-				HardExceeded: hardPct >= 100,
-				Soft:         soft,
-				SoftExceeded: softPct >= 100,
-			},
-			Usage: &iquota.Usage{
-				Inodes:   filesUsed,
-				Logical:  bytesUsed,
-				Physical: bytesUsed,
-			},
+		quota := &iquota.IQuota{
+			Path:       path,
+			HardLimit:  hard,
+			SoftLimit:  soft,
+			Used:       bytesUsed,
+			UsedInodes: filesUsed,
 		}
 
-		users.add(username, quota)
-	}
-
-	for username, quotas := range users {
-		qr := &iquota.QuotaResponse{Errors: nil, Resume: "", Quotas: quotas}
-		err := cache.SetUserQuotaCache(prefix, username, qr)
+		err := cache.SetDirectoryQuotaCache(path, quota)
 		if err != nil {
 			log.WithFields(log.Fields{
-				"path":  prefix,
-				"user":  username,
+				"path":  path,
 				"error": err,
-			}).Error("Failed to set user quota cache in redis")
+			}).Error("Failed to set panfs directory quota cache in redis")
 		}
 	}
 
@@ -343,7 +287,7 @@ func main() {
 		os.Exit(0)
 	}
 
-	cache := &Cache{expire: *expire}
+	cache := &iquota.Cache{Expire: *expire}
 
 	reader := bytes.NewReader(out.Bytes())
 

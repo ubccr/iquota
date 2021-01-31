@@ -2,22 +2,20 @@
 // Use of this source code is governed by a BSD style
 // license that can be found in the LICENSE file.
 
-package main
+package iquota
 
 import (
 	"encoding/json"
-	"fmt"
 
 	"github.com/gomodule/redigo/redis"
 	"github.com/sirupsen/logrus"
-	"github.com/ubccr/iquota"
 )
 
 type Cache struct {
-	expire int
+	Expire int
 }
 
-func (c *Cache) redisSet(key string, qr *iquota.QuotaResponse, expire int) error {
+func (c *Cache) redisSet(key string, iq *IQuota) error {
 	conn, err := redis.Dial("tcp", ":6379")
 	if err != nil {
 		logrus.WithFields(logrus.Fields{
@@ -27,7 +25,7 @@ func (c *Cache) redisSet(key string, qr *iquota.QuotaResponse, expire int) error
 	}
 	defer conn.Close()
 
-	out, err := json.Marshal(qr)
+	out, err := json.Marshal(iq)
 	if err != nil {
 		logrus.WithFields(logrus.Fields{
 			"err": err.Error(),
@@ -36,7 +34,7 @@ func (c *Cache) redisSet(key string, qr *iquota.QuotaResponse, expire int) error
 		return err
 	}
 
-	_, err = conn.Do("SETEX", key, expire, out)
+	_, err = conn.Do("SETEX", key, c.Expire, out)
 	if err != nil {
 		logrus.WithFields(logrus.Fields{
 			"err": err.Error(),
@@ -48,10 +46,6 @@ func (c *Cache) redisSet(key string, qr *iquota.QuotaResponse, expire int) error
 	return nil
 }
 
-func (c *Cache) SetGroupQuotaCache(path, group string, qr *iquota.QuotaResponse) error {
-	return c.redisSet(fmt.Sprintf("%s:GROUP:%s", path, group), qr, c.expire)
-}
-
-func (c *Cache) SetUserQuotaCache(path, user string, qr *iquota.QuotaResponse) error {
-	return c.redisSet(fmt.Sprintf("%s:USER:%s", path, user), qr, c.expire)
+func (c *Cache) SetDirectoryQuotaCache(path string, iq *IQuota) error {
+	return c.redisSet(path, iq)
 }
