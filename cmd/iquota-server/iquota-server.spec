@@ -1,7 +1,7 @@
 %define __spec_install_post %{nil}
 %define debug_package %{nil}
 
-Summary:       Proxy server for Isilon OneFS SmartQuota reporting
+Summary:       Proxy server for CCR quota reporting
 Name:          iquota-server
 Version:       0.0.6
 Release:       1%{?dist}
@@ -13,7 +13,7 @@ BuildRoot:     %{_tmppath}/%{name}-%{version}-%{release}-root
 Requires(pre): /usr/sbin/useradd, /usr/bin/getent
 
 %description
-Linux CLI tools for Isilon OneFS SmartQuota reporting
+Linux CLI tools for CCR quota reporting
 
 %pre
 getent group iquota &> /dev/null || \

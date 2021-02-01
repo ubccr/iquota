@@ -1,7 +1,7 @@
 %define __spec_install_post %{nil}
 %define debug_package %{nil}
 
-Summary:       Isilon OneFS SmartQuota report CLI tool
+Summary:       CCR quota report CLI tool
 Name:          iquota
 Version:       0.0.6
 Release:       1%{?dist}
@@ -12,7 +12,7 @@ URL:           https://github.com/ubccr/iquota
 BuildRoot:     %{_tmppath}/%{name}-%{version}-%{release}-root
 
 %description
-Linux CLI tools for Isilon OneFS SmartQuota reporting
+Linux CLI tools for CCR reporting
 
 %pre
 
