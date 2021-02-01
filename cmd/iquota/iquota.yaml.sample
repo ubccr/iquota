@@ -8,13 +8,4 @@ iquota_url: "http://localhost"
 # iquota cert
 #------------------------------------------------------------------------------
 # iquota_cert: "/path/to/cert"
-
-#------------------------------------------------------------------------------
-# Default filesystems (must be mounted and in /etc/mtab). Key is the isilon
-# /ifs path and value is what quotas to report (user, group or both)
-#------------------------------------------------------------------------------
-# filesystems:
-#    /ifs/home: user
-#    /ifs/projects: user,group
-#    /ifs/util: group
 ...
