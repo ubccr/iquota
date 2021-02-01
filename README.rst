@@ -1,5 +1,5 @@
 ===============================================================================
-Linux CLI tool for Isilon OneFS SmartQuota reporting
+Linux CLI tool for CCR quota reporting
 ===============================================================================
 
 ------------------------------------------------------------------------
@@ -9,13 +9,11 @@ What is iquota?
 iquota is a command line tool and associated server application for reporting
 quotas for CCR storage systems.
 
-Linux clients mount Isilon /ifs over nfs. Users obtain kerberos credentials via
-knit and run the iquota client command which connects to the iquota-server
+Linux clients mount storage systems over nfs. Users obtain kerberos credentials
+via knit and run the iquota client command which connects to the iquota-server
 (proxy) over HTTPS (using GSSAPI/SPNEGO for auth). The iquota-proxy server
-validates the users kerberos credentials and requests quota information using
-the OneFS API. The iquota-server connects to the OneFS API using a system
-account which has read-only access to quota information using OneFS RBAC (role
-based access control).
+validates the users kerberos credentials and requests quota information cached
+in redis. 
 
 ------------------------------------------------------------------------
 Features
@@ -132,10 +130,10 @@ To view iquota-server system logs run::
     $ journalctl -u iquota-server
 
 ------------------------------------------------------------------------
-Install iquota on all client machines mounting /ifs over nfs
+Install iquota on all client machines mounting storage over nfs
 ------------------------------------------------------------------------
 
-On all client machines mounting Isilon /ifs over nfs install the iquota client.
+On all client machines mounting storage over nfs install the iquota client.
 Download the RPM release `here <https://github.com/ubccr/iquota/releases>`_::
 
   $ rpm -Uvh iquota-0.x.x-x.el7.centos.x86_64.rpm
@@ -171,8 +169,8 @@ Check user/group quotas::
 Configure caching
 ------------------------------------------------------------------------
 
-iquota-server can optionally be configured to cache results for a given time
-period. This helps reduce the load on the OneFS API and provide better iquota
+iquota-server should be configured to cache results for a given time period.
+This helps reduce the load on the storage APIs and provide better iquota
 performance. To enable caching first install redis then update
 /etc/iquota/iquota.yaml.
 
