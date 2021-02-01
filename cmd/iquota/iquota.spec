@@ -3,7 +3,7 @@
 
 Summary:       Isilon OneFS SmartQuota report CLI tool
 Name:          iquota
-Version:       0.0.5
+Version:       0.0.6
 Release:       1%{?dist}
 License:       BSD
 Group:         Applications/Internet

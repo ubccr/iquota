@@ -3,7 +3,7 @@
 
 Summary:       Proxy server for Isilon OneFS SmartQuota reporting
 Name:          iquota-server
-Version:       0.0.5
+Version:       0.0.6
 Release:       1%{?dist}
 License:       BSD
 Group:         Applications/Internet

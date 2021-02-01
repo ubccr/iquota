@@ -7,18 +7,7 @@ What is iquota?
 ------------------------------------------------------------------------
 
 iquota is a command line tool and associated server application for reporting
-quotas from Isilon nfs mounts using the OneFS API. Isilon is a scale out NAS
-platform by EMC and when used in a Linux environment lacks adequate CLI tools
-for reporting quotas from client mounts. For example, in an HPC environment
-where Isilon is mounted via nfs on a front end machine running Linux, users
-need a way to check and report on their quotas. This project aims to provide a
-tool very similar to the native quota command in Linux but for Isilon nfs
-mounts. This `post <https://community.emc.com/message/762183#762183>`_ sums up
-essentially what this project aims to provide.  
-
-The following diagram shows the basic architecture of iquota:
-
-.. image:: docs/iquota-diagram.png
+quotas for CCR storage systems.
 
 Linux clients mount Isilon /ifs over nfs. Users obtain kerberos credentials via
 knit and run the iquota client command which connects to the iquota-server
@@ -40,7 +29,6 @@ Features
 Requirements
 ------------------------------------------------------------------------
 
-- Isilon OneFS API (v7.2.1)
 - Linux
 - Kerberos
 - sssd-ifp (SSSD InfoPipe responder)
@@ -55,18 +43,6 @@ flavor of Linux*
 Download the RPM release `here <https://github.com/ubccr/iquota/releases>`_::
 
   $ rpm -Uvh iquota-server-0.x.x-x.el7.centos.x86_64.rpm
-
-Create user account for accessing OneFS API
-============================================
-
-Create a role in OneFS that allows read-only access to quota information. For
-example::
-
-    # isi auth roles create --name=roQuotaUser --description='Readonly quota access'
-    # isi auth roles modify --add-priv-ro=ISI_PRIV_QUOTA --role=roQuotaUser
-
-Create a system user/pass account and add this user to the role. This will be
-the user account the iquota-server will use to connect to OneFS API.
 
 Setup Kerberos HTTP keytab
 ===========================
@@ -122,14 +98,9 @@ command. The array of unix groups for the user should be displayed::
 Configure iquota.yaml
 =====================
 
-Edit iquota configuration file. Add host, port, user/pass for OneFS API, path to
-http keytab::
+Edit iquota configuration file::
 
     $ vim /etc/iquota/iquota.yaml 
-    onefs_host: "localhost"
-    onefs_port: 8080
-    onefs_user: "user"
-    onefs_pass: "pass"
     keytab: "/path/to/http.keytab"
     [ edit to taste ]
 
@@ -218,12 +189,6 @@ Edit /etc/iquota/iquota.yaml and restart::
     enable_caching: true
 
     $ systecmtl restart iquota-server
-
-------------------------------------------------------------------------
-References
-------------------------------------------------------------------------
-
-1. OneFS API Docs - https://community.emc.com/docs/DOC-48273
 
 ------------------------------------------------------------------------
 License

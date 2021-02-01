@@ -2,6 +2,13 @@
 ChangeLog
 ===============================================================================
 
+v0.0.6
+----------------------
+
+- Add support in client for vast mounts
+- Major refactor to support directory based quotas
+- Remove isilon onefs support
+
 v0.0.5
 ----------------------
 
