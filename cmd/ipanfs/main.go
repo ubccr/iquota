@@ -87,7 +87,7 @@ func cacheGroupQuota(cache *iquota.Cache, prefix string, report io.Reader) error
 		//hardPct, _ := strconv.Atoi(cols[9])
 		filesUsed, _ := strconv.Atoi(cols[10])
 
-		quota := &iquota.IQuota{
+		quota := &iquota.Quota{
 			Path:       path,
 			HardLimit:  hard,
 			SoftLimit:  soft,
@@ -159,7 +159,7 @@ func cacheUserQuota(cache *iquota.Cache, prefix string, report io.Reader) error 
 		//hardPct, _ := strconv.Atoi(cols[9])
 		filesUsed, _ := strconv.Atoi(cols[10])
 
-		quota := &iquota.IQuota{
+		quota := &iquota.Quota{
 			Path:       path,
 			HardLimit:  hard,
 			SoftLimit:  soft,

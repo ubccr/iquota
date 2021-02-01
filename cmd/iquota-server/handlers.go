@@ -52,7 +52,7 @@ func (h *Handler) Quota(c echo.Context) error {
 			return echo.NewHTTPError(http.StatusInternalServerError, "Failed to get quota")
 		}
 
-		return c.JSON(http.StatusOK, []*iquota.IQuota{quota})
+		return c.JSON(http.StatusOK, []*iquota.Quota{quota})
 	}
 
 	userFilter := c.QueryParam("user")
@@ -75,7 +75,7 @@ func (h *Handler) Quota(c echo.Context) error {
 			return echo.NewHTTPError(http.StatusInternalServerError, "Failed to get quota")
 		}
 
-		return c.JSON(http.StatusOK, []*iquota.IQuota{quota})
+		return c.JSON(http.StatusOK, []*iquota.Quota{quota})
 	}
 
 	groupFilter := c.QueryParam("group")
@@ -121,5 +121,5 @@ func (h *Handler) Quota(c echo.Context) error {
 		return echo.NewHTTPError(http.StatusInternalServerError, "Failed to get quota")
 	}
 
-	return c.JSON(http.StatusOK, []*iquota.IQuota{quota})
+	return c.JSON(http.StatusOK, []*iquota.Quota{quota})
 }

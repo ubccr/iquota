@@ -19,6 +19,17 @@ var (
 	ErrNotFound = errors.New("not found")
 )
 
+type Quota struct {
+	Path            string `json:"path"`
+	GracePeriod     string `json:"pretty_grace_period"`
+	HardLimit       int    `json:"hard_limit"`
+	SoftLimit       int    `json:"soft_limit"`
+	Used            int    `json:"used"`
+	HardLimitInodes int    `json:"hard_limit_inodes"`
+	SoftLimitInodes int    `json:"soft_limit_inodes"`
+	UsedInodes      int    `json:"used_inodes"`
+}
+
 type Cache struct {
 	Expire int
 }
@@ -35,7 +46,7 @@ func redisDial() (redis.Conn, error) {
 	return conn, err
 }
 
-func (c *Cache) redisFind(pattern string) ([]*IQuota, error) {
+func (c *Cache) redisFind(pattern string) ([]*Quota, error) {
 	conn, err := redisDial()
 	if err != nil {
 		return nil, err
@@ -59,7 +70,7 @@ func (c *Cache) redisFind(pattern string) ([]*IQuota, error) {
 		return nil, err
 	}
 
-	var quotas []*IQuota
+	var quotas []*Quota
 
 	for _, key := range keys {
 		if strings.HasPrefix(key, viper.GetString("home_dir")) {
@@ -76,7 +87,7 @@ func (c *Cache) redisFind(pattern string) ([]*IQuota, error) {
 	return quotas, nil
 }
 
-func (c *Cache) unmarshalQuota(conn redis.Conn, key string) (*IQuota, error) {
+func (c *Cache) unmarshalQuota(conn redis.Conn, key string) (*Quota, error) {
 	rawJson, err := redis.Bytes(conn.Do("GET", key))
 	if err != nil {
 		if errors.Is(err, redis.ErrNil) {
@@ -90,7 +101,7 @@ func (c *Cache) unmarshalQuota(conn redis.Conn, key string) (*IQuota, error) {
 		return nil, err
 	}
 
-	quota := &IQuota{}
+	quota := &Quota{}
 	err = json.Unmarshal([]byte(rawJson), quota)
 	if err != nil {
 		logrus.WithFields(logrus.Fields{
@@ -103,7 +114,7 @@ func (c *Cache) unmarshalQuota(conn redis.Conn, key string) (*IQuota, error) {
 	return quota, nil
 }
 
-func (c *Cache) redisGet(key string) (*IQuota, error) {
+func (c *Cache) redisGet(key string) (*Quota, error) {
 	conn, err := redisDial()
 	if err != nil {
 		return nil, err
@@ -113,7 +124,7 @@ func (c *Cache) redisGet(key string) (*IQuota, error) {
 	return c.unmarshalQuota(conn, key)
 }
 
-func (c *Cache) redisSet(key string, iq *IQuota) error {
+func (c *Cache) redisSet(key string, iq *Quota) error {
 	conn, err := redisDial()
 	if err != nil {
 		logrus.WithFields(logrus.Fields{
@@ -144,15 +155,15 @@ func (c *Cache) redisSet(key string, iq *IQuota) error {
 	return nil
 }
 
-func (c *Cache) SetDirectoryQuotaCache(path string, iq *IQuota) error {
+func (c *Cache) SetDirectoryQuotaCache(path string, iq *Quota) error {
 	return c.redisSet(path, iq)
 }
 
-func (c *Cache) GetDirectoryQuotaCache(path string) (*IQuota, error) {
+func (c *Cache) GetDirectoryQuotaCache(path string) (*Quota, error) {
 	c.redisFind("grp-ezurek")
 	return c.redisGet(path)
 }
 
-func (c *Cache) SearchDirectoryQuotaCache(pattern string) ([]*IQuota, error) {
+func (c *Cache) SearchDirectoryQuotaCache(pattern string) ([]*Quota, error) {
 	return c.redisFind(pattern)
 }

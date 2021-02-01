@@ -131,7 +131,7 @@ func main() {
 	cache := &iquota.Cache{Expire: *expire}
 
 	for _, q := range quotas {
-		iq := &iquota.IQuota{
+		iq := &iquota.Quota{
 			Path:            q.Path,
 			GracePeriod:     q.GracePeriod,
 			HardLimit:       q.HardLimit,

@@ -4,7 +4,7 @@
 
 // Package iquota provides a Go client for the Isilon OneFS API and command
 // line tools for reporting SmartQuotas
-package iquota
+package onefs
 
 import (
 	"bytes"

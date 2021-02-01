@@ -55,7 +55,7 @@ func (c *QuotaClient) format() string {
 	return ShortFormat
 }
 
-func (c *QuotaClient) fetchQuota(url string) ([]*iquota.IQuota, error) {
+func (c *QuotaClient) fetchQuota(url string) ([]*iquota.Quota, error) {
 	req, err := http.NewRequest("GET", url, nil)
 	tr := &http.Transport{TLSClientConfig: &tls.Config{RootCAs: c.certPool}}
 
@@ -88,7 +88,7 @@ func (c *QuotaClient) fetchQuota(url string) ([]*iquota.IQuota, error) {
 		return nil, err
 	}
 
-	var quotas []*iquota.IQuota
+	var quotas []*iquota.Quota
 	err = json.Unmarshal(rawJson, &quotas)
 	if err != nil {
 		return nil, err
@@ -106,7 +106,7 @@ func (c *QuotaClient) printHeader() {
 	fmt.Printf(c.format(), "Path ", "files", "used", "limit", "grace ")
 }
 
-func (c *QuotaClient) printQuota(quota *iquota.IQuota) {
+func (c *QuotaClient) printQuota(quota *iquota.Quota) {
 	printer := cyan
 	soft := ""
 	hard := ""
