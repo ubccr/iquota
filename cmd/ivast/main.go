@@ -8,6 +8,7 @@ import (
 	"net/http"
 
 	log "github.com/sirupsen/logrus"
+	"github.com/spf13/viper"
 	"github.com/ubccr/iquota"
 	kingpin "gopkg.in/alecthomas/kingpin.v2"
 )
@@ -56,6 +57,12 @@ type vastQuota struct {
 	UsedCapacity          int    `json:"used_capacity"`
 	UsedEffectiveCapacity int    `json:"used_effective_capacity"`
 	UsedInodes            int    `json:"used_inodes"`
+}
+
+func init() {
+	viper.SetConfigName("iquota")
+	viper.SetConfigType("yaml")
+	viper.AddConfigPath("/etc/iquota/")
 }
 
 func fetchQuotaReport(host, user, password string) ([]vastQuota, error) {
@@ -114,6 +121,7 @@ func main() {
 		debug = kingpin.Flag("debug", "enable debug mode").Default("false").Bool()
 	)
 
+	viper.ReadInConfig()
 	kingpin.HelpFlag.Short('h')
 	kingpin.Parse()
 

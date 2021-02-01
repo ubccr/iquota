@@ -17,6 +17,7 @@ import (
 	"strings"
 
 	log "github.com/sirupsen/logrus"
+	"github.com/spf13/viper"
 	"github.com/ubccr/iquota"
 	"golang.org/x/crypto/ssh"
 	kingpin "gopkg.in/alecthomas/kingpin.v2"
@@ -28,6 +29,12 @@ var (
 	SkipUsers     = []string{"root"}
 	SkipGroups    = []string{"wheel"}
 )
+
+func init() {
+	viper.SetConfigName("iquota")
+	viper.SetConfigType("yaml")
+	viper.AddConfigPath("/etc/iquota/")
+}
 
 func skip(list []string, name string) bool {
 	for _, x := range list {
@@ -268,6 +275,7 @@ func main() {
 		noop  = kingpin.Flag("noop", "Dump quota report from panfs and exit").Default("false").Bool()
 	)
 
+	viper.ReadInConfig()
 	kingpin.HelpFlag.Short('h')
 	kingpin.Parse()
 
