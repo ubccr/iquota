@@ -9,27 +9,25 @@ import (
 	"os"
 	"strings"
 
-	"github.com/gorilla/context"
+	"github.com/labstack/echo/v4"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 	"github.com/ubccr/kerby"
 )
 
 var (
-	negotiateHeader       = "Negotiate"
-	wwwAuthenticateHeader = "WWW-Authenticate"
-	authorizationHeader   = "Authorization"
+	negotiateHeader = "Negotiate"
 )
 
 // Kerberos SPNEGO authentication
-func KerbAuthRequired(app *Application, next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		authReq := strings.Split(r.Header.Get(authorizationHeader), " ")
+func KerbAuthRequired(next echo.HandlerFunc) echo.HandlerFunc {
+	return func(c echo.Context) error {
+		authReq := strings.Split(c.Request().Header.Get(echo.HeaderAuthorization), " ")
 		if len(authReq) != 2 || authReq[0] != negotiateHeader {
-			w.Header().Set(wwwAuthenticateHeader, negotiateHeader)
-			w.WriteHeader(http.StatusUnauthorized)
-			return
+			c.Response().Header().Set(echo.HeaderWWWAuthenticate, negotiateHeader)
+			return echo.ErrUnauthorized
 		}
+
 		os.Setenv("KRB5_KTNAME", viper.GetString("keytab"))
 
 		ks := new(kerby.KerbServer)
@@ -38,32 +36,30 @@ func KerbAuthRequired(app *Application, next http.Handler) http.Handler {
 			logrus.WithFields(logrus.Fields{
 				"err": err.Error(),
 			}).Error("KerbServer Init Error")
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
+			return echo.NewHTTPError(http.StatusInternalServerError, "Fatal error")
 		}
 		defer ks.Clean()
 
 		err = ks.Step(authReq[1])
-		w.Header().Set(wwwAuthenticateHeader, negotiateHeader+" "+ks.Response())
+		c.Response().Header().Set(echo.HeaderWWWAuthenticate, negotiateHeader+" "+ks.Response())
 
 		if err != nil {
 			logrus.WithFields(logrus.Fields{
 				"err": err.Error(),
 			}).Error("KerbServer Step Error")
-			http.Error(w, err.Error(), http.StatusUnauthorized)
-			return
+			return echo.ErrUnauthorized
 		}
 
 		princ := ks.UserName()
 		parts := strings.SplitN(princ, "@", 2)
-		user := &User{Uid: parts[0]}
+		user := &User{UID: parts[0]}
 
-		user.Groups, err = FetchGroups(user.Uid)
+		user.Groups, err = FetchGroups(user.UID)
 		if err != nil {
-			logrus.Error("Failed to fetch groups for user: %s", user.Uid)
+			logrus.Error("Failed to fetch groups for user: %s", user.UID)
 		}
 
-		context.Set(r, "user", user)
-		next.ServeHTTP(w, r)
-	})
+		c.Set("user", user)
+		return next(c)
+	}
 }

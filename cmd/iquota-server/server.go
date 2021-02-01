@@ -5,121 +5,74 @@
 package main
 
 import (
+	"crypto/tls"
 	"fmt"
 	"net/http"
+	"time"
 
-	"github.com/carbocation/interpose"
-	"github.com/gorilla/mux"
-	"github.com/gorilla/schema"
-	"github.com/sirupsen/logrus"
+	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v4/middleware"
+	log "github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
-	"github.com/ubccr/iquota"
 )
-
-type Application struct {
-	decoder           *schema.Decoder
-	defaultUserQuota  map[string]*iquota.Quota
-	defaultGroupQuota map[string]*iquota.Quota
-}
-
-func NewApplication() (*Application, error) {
-	app := &Application{}
-
-	c := NewOnefsClient()
-
-	qres, err := c.FetchQuota("", "default-user", "", false, false)
-	if err != nil {
-		return nil, err
-	}
-
-	app.defaultUserQuota = make(map[string]*iquota.Quota)
-	for _, q := range qres.Quotas {
-		app.defaultUserQuota[q.Path] = q
-	}
-
-	qres, err = c.FetchQuota("", "default-group", "", false, false)
-	if err != nil {
-		return nil, err
-	}
-
-	app.defaultGroupQuota = make(map[string]*iquota.Quota)
-	for _, q := range qres.Quotas {
-		app.defaultGroupQuota[q.Path] = q
-	}
-
-	app.decoder = schema.NewDecoder()
-
-	return app, nil
-}
-
-func NewOnefsClient() *iquota.Client {
-	return iquota.NewClient(viper.GetString("onefs_host"),
-		viper.GetInt("onefs_port"),
-		viper.GetString("onefs_user"),
-		viper.GetString("onefs_pass"),
-		viper.GetString("onefs_cert"))
-}
-
-func (a *Application) middlewareStruct() (*interpose.Middleware, error) {
-	mw := interpose.New()
-	mw.UseHandler(a.router())
-
-	return mw, nil
-}
-
-func (a *Application) router() *mux.Router {
-	router := mux.NewRouter()
-
-	router.NotFoundHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusNotFound)
-	})
-	router.Path("/").Handler(KerbAuthRequired(a, IndexHandler(a))).Methods("GET")
-	router.Path("/quota").Handler(KerbAuthRequired(a, AllQuotaHandler(a))).Methods("GET")
-	router.Path("/quota/user").Handler(KerbAuthRequired(a, UserQuotaHandler(a))).Methods("GET")
-	router.Path("/quota/group").Handler(KerbAuthRequired(a, GroupQuotaHandler(a))).Methods("GET")
-	router.Path("/quota/exceeded").Handler(KerbAuthRequired(a, OverQuotaHandler(a))).Methods("GET")
-
-	return router
-}
 
 func init() {
 	viper.SetDefault("port", 8080)
-	viper.SetDefault("onefs_port", 8080)
-	viper.SetDefault("onefs_host", "localhost")
+	viper.SetDefault("home_dir", "/home")
 }
 
-func Server() {
-	app, err := NewApplication()
+// Start web server
+func RunServer() error {
+	e := echo.New()
+	e.HideBanner = true
+	e.Use(middleware.Recover())
+
+	h, err := NewHandler()
 	if err != nil {
-		logrus.Fatal(err.Error())
+		return err
 	}
 
-	middle, err := app.middlewareStruct()
-	if err != nil {
-		logrus.Fatal(err.Error())
-	}
+	h.SetupRoutes(e)
 
-	http.Handle("/", middle)
+	s := &http.Server{
+		Addr:         fmt.Sprintf("%s:%d", viper.GetString("bind"), viper.GetInt("port")),
+		ReadTimeout:  5 * time.Second,
+		WriteTimeout: 5 * time.Second,
+		IdleTimeout:  120 * time.Second,
+	}
 
 	certFile := viper.GetString("cert")
 	keyFile := viper.GetString("key")
-
 	if certFile != "" && keyFile != "" {
-		logrus.Printf("Listening on https://%s:%d", viper.GetString("bind"), viper.GetInt("port"))
-		err := http.ListenAndServeTLS(fmt.Sprintf("%s:%d", viper.GetString("bind"), viper.GetInt("port")), certFile, keyFile, nil)
-		if err != nil {
-			logrus.WithFields(logrus.Fields{
-				"err": err.Error(),
-			}).Fatal("Failed to run https server")
+		cfg := &tls.Config{
+			MinVersion: tls.VersionTLS12,
+			CurvePreferences: []tls.CurveID{
+				tls.CurveP256,
+				tls.X25519,
+			},
+			PreferServerCipherSuites: true,
+			CipherSuites: []uint16{
+				tls.TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384,
+				tls.TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,
+				tls.TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305,
+				tls.TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305,
+				tls.TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256,
+				tls.TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
+			},
 		}
+
+		s.TLSConfig = cfg
+		s.TLSConfig.Certificates = make([]tls.Certificate, 1)
+		s.TLSConfig.Certificates[0], err = tls.LoadX509KeyPair(certFile, keyFile)
+		if err != nil {
+			return err
+		}
+
+		log.Printf("Running on https://%s:%d%s", viper.GetString("bind"), viper.GetInt("port"), "/")
 	} else {
-		logrus.Printf("Listening on http://%s:%d", viper.GetString("bind"), viper.GetInt("port"))
-		logrus.Warn("**WARNING*** SSL/TLS not enabled. HTTP communication will not be encrypted and vulnerable to snooping.")
-		err := http.ListenAndServe(fmt.Sprintf("%s:%d", viper.GetString("bind"), viper.GetInt("port")), nil)
-		if err != nil {
-			logrus.WithFields(logrus.Fields{
-				"err": err.Error(),
-			}).Fatal("Failed to run http server")
-		}
+		log.Warn("**WARNING*** SSL/TLS not enabled. HTTP communication will not be encrypted and vulnerable to snooping.")
+		log.Printf("Running on http://%s:%d%s", viper.GetString("bind"), viper.GetInt("port"), "/")
 	}
+
+	return e.StartServer(s)
 }

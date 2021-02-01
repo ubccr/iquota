@@ -54,7 +54,10 @@ func main() {
 		return nil
 	}
 	app.Action = func(c *cli.Context) {
-		Server()
+		err := RunServer()
+		if err != nil {
+			logrus.Fatal(err)
+		}
 	}
 
 	app.RunAndExitOnError()
