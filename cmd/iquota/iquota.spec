@@ -42,6 +42,9 @@ rm -rf %{buildroot}
 %attr(644,root,root) %config(noreplace) %{_sysconfdir}/%{name}/%{name}.yaml
 
 %changelog
+* Sun Jan 31 2021  Andrew E. Bruno <aebruno2@buffalo.edu> 0.0.6-1
+- New Features
+    - Add support to client for vast mounts
 * Thu Jul 23 2020  Andrew E. Bruno <aebruno2@buffalo.edu> 0.0.5-1
 - New Features
     - Add support to client for panfs mounts

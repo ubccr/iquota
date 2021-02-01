@@ -38,6 +38,7 @@ install -d %{buildroot}%{_usr}/lib/systemd/system
 cp -a ./iquota.yaml.sample %{buildroot}%{_sysconfdir}/iquota/iquota.yaml
 cp -a ./%{name} %{buildroot}%{_bindir}/%{name}
 cp -a ./ipanfs %{buildroot}%{_bindir}/ipanfs
+cp -a ./ivast %{buildroot}%{_bindir}/ivast
 cat << EOF > %{buildroot}%{_usr}/lib/systemd/system/%{name}.service
 [Unit]
 Description=iquota server
@@ -65,10 +66,14 @@ rm -rf %{buildroot}
 %license LICENSE
 %attr(0755,root,root) %{_bindir}/%{name}
 %attr(0755,root,root) %{_bindir}/ipanfs
+%attr(0755,root,root) %{_bindir}/ivast
 %attr(640,root,iquota) %config(noreplace) %{_sysconfdir}/iquota/iquota.yaml
 %attr(644,root,root) %{_usr}/lib/systemd/system/%{name}.service
 
 %changelog
+* Sun Jan 31 2021  Andrew E. Bruno <aebruno2@buffalo.edu> 0.0.6-1
+- New Features
+    - Add support to client for vast mounts
 * Thu Jul 23 2020  Andrew E. Bruno <aebruno2@buffalo.edu> 0.0.5-1
 - New Features
     - Add support to client for panfs mounts
