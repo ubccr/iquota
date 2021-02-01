@@ -5,369 +5,121 @@
 package main
 
 import (
-	"encoding/json"
+	"errors"
+	"fmt"
 	"net/http"
-	"strings"
+	group "os/user"
 
-	"github.com/gorilla/context"
-	"github.com/sirupsen/logrus"
+	"github.com/labstack/echo/v4"
+	log "github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 	"github.com/ubccr/iquota"
 )
 
-func errorHandler(app *Application, w http.ResponseWriter, status int, err *iquota.IsiError) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(status)
-	if err != nil {
-		out, err := json.Marshal(err)
-		if err != nil {
-			logrus.Printf("Error encoding error message as json: %s", err)
-			return
-		}
-		w.Write(out)
+type Handler struct {
+	cache *iquota.Cache
+}
+
+func NewHandler() (*Handler, error) {
+	return &Handler{cache: &iquota.Cache{}}, nil
+}
+
+func (h *Handler) SetupRoutes(e *echo.Echo) {
+	e.GET("/quota", KerbAuthRequired(h.Quota)).Name = "quota"
+}
+
+func (h *Handler) Quota(c echo.Context) error {
+	u := c.Get("user")
+	if u == nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, "Failed to get user")
 	}
-}
+	user := u.(*User)
+	log.Infof("User %s requesting quota", user.UID)
 
-func IndexHandler(app *Application) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		user := context.Get(r, "user").(*User)
-		if user == nil {
-			logrus.Error("index handler: user not found in request context")
-			errorHandler(app, w, http.StatusInternalServerError, nil)
-			return
-		}
-
-		quotas := make([]*iquota.Quota, 0)
-
-		for _, q := range app.defaultUserQuota {
-			quotas = append(quotas, q)
-		}
-
-		for _, q := range app.defaultGroupQuota {
-			quotas = append(quotas, q)
-		}
-
-		out, err := json.Marshal(quotas)
+	path := c.QueryParam("path")
+	if len(path) > 0 {
+		quota, err := h.cache.GetDirectoryQuotaCache(path)
 		if err != nil {
-			logrus.Printf("Error encoding data as json: %s", err)
-			errorHandler(app, w, http.StatusInternalServerError, nil)
-			return
-		}
-
-		w.Header().Set("Content-Type", "application/json")
-		w.Write(out)
-	})
-}
-
-func UserQuotaHandler(app *Application) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		user := context.Get(r, "user").(*User)
-		if user == nil {
-			logrus.Error("user quota handler: user not found in request context")
-			errorHandler(app, w, http.StatusInternalServerError, nil)
-			return
-		}
-
-		qp := new(iquota.QuotaParams)
-		app.decoder.Decode(qp, r.URL.Query())
-
-		if len(qp.Path) == 0 {
-			errorHandler(app, w, http.StatusBadRequest, &iquota.IsiError{Code: "AEC_BAD_REQUEST", Message: "Path is required"})
-			return
-		}
-
-		uid := user.Uid
-		if len(qp.User) != 0 && qp.User != uid {
-			if !user.IsAdmin() {
-				errorHandler(app, w, http.StatusBadRequest, &iquota.IsiError{Code: "AEC_BAD_REQUEST", Message: "Access denied"})
-				return
+			if errors.Is(err, iquota.ErrNotFound) {
+				return echo.NewHTTPError(http.StatusNotFound, nil)
 			}
 
-			uid = qp.User
+			log.WithFields(log.Fields{
+				"err":  err,
+				"path": path,
+			}).Error("Failed to fetch quota by path")
+
+			return echo.NewHTTPError(http.StatusInternalServerError, "Failed to get quota")
 		}
 
-		var qres *iquota.QuotaResponse
+		return c.JSON(http.StatusOK, []*iquota.Quota{quota})
+	}
 
-		if viper.GetBool("enable_cache") {
-			cqres, err := FetchUserQuotaCache(qp.Path, uid)
-			if err == nil {
-				qres = cqres
-			}
+	userFilter := c.QueryParam("user")
+	if len(userFilter) > 0 {
+		if userFilter != user.UID && !user.IsAdmin() {
+			return echo.ErrUnauthorized
 		}
 
-		if qres == nil {
-			c := NewOnefsClient()
-			res, err := c.FetchUserQuota(qp.Path, uid)
-			if err != nil {
-				logrus.WithFields(logrus.Fields{
-					"err": err.Error(),
-					"uid": uid,
-				}).Error("Failed to fetch user quota")
-				if ierr, ok := err.(*iquota.IsiError); ok {
-					errorHandler(app, w, http.StatusBadRequest, ierr)
-				} else {
-					errorHandler(app, w, http.StatusBadRequest, &iquota.IsiError{Code: "AEC_BAD_REQUEST", Message: "Fatal system error"})
-				}
-
-				return
-			}
-
-			qres = res
-
-			if viper.GetBool("enable_cache") {
-				SetUserQuotaCache(qp.Path, uid, qres)
-			}
-		}
-
-		qr := &iquota.QuotaRestResponse{Quotas: qres.Quotas}
-		qr.Default, _ = app.defaultUserQuota[qp.Path]
-
-		out, err := json.Marshal(qr)
+		quota, err := h.cache.GetDirectoryQuotaCache(fmt.Sprintf("%s/%s", viper.GetString("home_dir"), userFilter))
 		if err != nil {
-			logrus.Printf("Error encoding data as json: %s", err)
-			errorHandler(app, w, http.StatusInternalServerError, nil)
-			return
-		}
-
-		w.Header().Set("Content-Type", "application/json")
-		w.Write(out)
-	})
-}
-
-func GroupQuotaHandler(app *Application) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		user := context.Get(r, "user").(*User)
-		if user == nil {
-			logrus.Error("group quota handler: user not found in request context")
-			errorHandler(app, w, http.StatusInternalServerError, nil)
-			return
-		}
-
-		qp := new(iquota.QuotaParams)
-		app.decoder.Decode(qp, r.URL.Query())
-
-		if len(qp.Path) == 0 {
-			errorHandler(app, w, http.StatusBadRequest, &iquota.IsiError{Code: "AEC_BAD_REQUEST", Message: "Path is required"})
-			return
-		}
-
-		groups := user.Groups
-		if len(qp.Group) != 0 {
-			if !user.IsAdmin() {
-				errorHandler(app, w, http.StatusBadRequest, &iquota.IsiError{Code: "AEC_BAD_REQUEST", Message: "Access denied"})
-				return
+			if errors.Is(err, iquota.ErrNotFound) {
+				return echo.NewHTTPError(http.StatusNotFound, nil)
 			}
 
-			groups = []string{qp.Group}
+			log.WithFields(log.Fields{
+				"err":        err,
+				"userFilter": userFilter,
+			}).Error("Failed to fetch quota with user filter")
+
+			return echo.NewHTTPError(http.StatusInternalServerError, "Failed to get quota")
 		}
 
-		logrus.WithFields(logrus.Fields{
-			"groups": groups,
-			"user":   user.Uid,
-		}).Info("User groups")
+		return c.JSON(http.StatusOK, []*iquota.Quota{quota})
+	}
 
-		c := NewOnefsClient()
-		c.NewSession()
-		gquotas := make([]*iquota.Quota, 0)
-
-		for _, group := range groups {
-
-			// Ensure group names don't contain spaces
-			group = strings.Replace(group, " ", "", -1)
-
-			var qres *iquota.QuotaResponse
-
-			if viper.GetBool("enable_cache") {
-				cqres, err := FetchGroupQuotaCache(qp.Path, group)
-				if err != nil {
-					if ierr, ok := err.(*iquota.IsiError); ok {
-						if ierr.Code == "AEC_NOT_FOUND" && len(qp.Group) == 0 {
-							continue
-						}
-						logrus.WithFields(logrus.Fields{
-							"err":   ierr.Error(),
-							"group": group,
-						}).Error("Failed to fetch group quota")
-						errorHandler(app, w, http.StatusBadRequest, ierr)
-						return
-					}
-				}
-
-				qres = cqres
-			}
-
-			if qres == nil {
-				res, err := c.FetchGroupQuota(qp.Path, group)
-				if err != nil {
-					if ierr, ok := err.(*iquota.IsiError); ok {
-						if ierr.Code == "AEC_NOT_FOUND" && viper.GetBool("enable_cache") {
-							SetGroupNegCache(qp.Path, group)
-						}
-
-						if ierr.Code == "AEC_NOT_FOUND" && len(qp.Group) == 0 {
-							continue
-						}
-						logrus.WithFields(logrus.Fields{
-							"err":   ierr.Error(),
-							"group": group,
-						}).Error("Failed to fetch group quota with isi error")
-						errorHandler(app, w, http.StatusBadRequest, ierr)
-					} else {
-						logrus.WithFields(logrus.Fields{
-							"err":   err.Error(),
-							"group": group,
-						}).Error("Failed to fetch group quota")
-						errorHandler(app, w, http.StatusBadRequest, &iquota.IsiError{Code: "AEC_BAD_REQUEST", Message: "Fatal system error"})
-					}
-
-					return
-				}
-
-				qres = res
-				if viper.GetBool("enable_cache") {
-					SetGroupQuotaCache(qp.Path, group, qres)
-				}
-			}
-
-			gquotas = append(gquotas, qres.Quotas...)
-		}
-
-		qr := &iquota.QuotaRestResponse{Quotas: gquotas}
-		qr.Default, _ = app.defaultGroupQuota[qp.Path]
-
-		out, err := json.Marshal(qr)
+	groupFilter := c.QueryParam("group")
+	if len(groupFilter) > 0 {
+		_, err := group.LookupGroup(groupFilter)
 		if err != nil {
-			logrus.Printf("Error encoding data as json: %s", err)
-			errorHandler(app, w, http.StatusInternalServerError, nil)
-			return
+			return echo.NewHTTPError(http.StatusNotFound, nil)
 		}
 
-		w.Header().Set("Content-Type", "application/json")
-		w.Write(out)
-	})
-}
-
-func OverQuotaHandler(app *Application) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		user := context.Get(r, "user").(*User)
-		if user == nil {
-			logrus.Error("over quota handler: user not found in request context")
-			errorHandler(app, w, http.StatusInternalServerError, nil)
-			return
+		if !user.HasGroup(groupFilter) && !user.IsAdmin() {
+			return echo.ErrUnauthorized
 		}
 
-		if !user.IsAdmin() {
-			errorHandler(app, w, http.StatusBadRequest, &iquota.IsiError{Code: "AEC_BAD_REQUEST", Message: "Access denied"})
-			return
-		}
-
-		qp := new(iquota.QuotaParams)
-		app.decoder.Decode(qp, r.URL.Query())
-
-		c := NewOnefsClient()
-		qres, err := c.FetchAllOverQuota(qp.Path)
+		quotas, err := h.cache.SearchDirectoryQuotaCache(groupFilter)
 		if err != nil {
-			logrus.WithFields(logrus.Fields{
-				"err": err.Error(),
-			}).Error("Failed to fetch over quota list")
-			if ierr, ok := err.(*iquota.IsiError); ok {
-				errorHandler(app, w, http.StatusBadRequest, ierr)
-			} else {
-				errorHandler(app, w, http.StatusBadRequest, &iquota.IsiError{Code: "AEC_BAD_REQUEST", Message: "Fatal system error"})
+			if errors.Is(err, iquota.ErrNotFound) {
+				return echo.NewHTTPError(http.StatusNotFound, nil)
 			}
 
-			return
+			log.WithFields(log.Fields{
+				"err":         err,
+				"groupFilter": groupFilter,
+			}).Error("Failed to fetch quota with group filter")
+
+			return echo.NewHTTPError(http.StatusInternalServerError, "Failed to get quota")
 		}
 
-		qr := &iquota.QuotaRestResponse{Quotas: qres.Quotas}
-		out, err := json.Marshal(qr)
-		if err != nil {
-			logrus.Printf("Error encoding data as json: %s", err)
-			errorHandler(app, w, http.StatusInternalServerError, nil)
-			return
+		return c.JSON(http.StatusOK, quotas)
+	}
+
+	// Default to returning quota for user
+	quota, err := h.cache.GetDirectoryQuotaCache(fmt.Sprintf("%s/%s", viper.GetString("home_dir"), user.UID))
+	if err != nil {
+		if errors.Is(err, iquota.ErrNotFound) {
+			return echo.NewHTTPError(http.StatusNotFound, nil)
 		}
 
-		w.Header().Set("Content-Type", "application/json")
-		w.Write(out)
-	})
-}
+		log.WithFields(log.Fields{
+			"err": err,
+			"uid": user.UID,
+		}).Error("Failed to fetch quota for user")
 
-func AllQuotaHandler(app *Application) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		user := context.Get(r, "user").(*User)
-		if user == nil {
-			logrus.Error("all quota handler: user not found in request context")
-			errorHandler(app, w, http.StatusInternalServerError, nil)
-			return
-		}
+		return echo.NewHTTPError(http.StatusInternalServerError, "Failed to get quota")
+	}
 
-		if !user.IsAdmin() {
-			errorHandler(app, w, http.StatusBadRequest, &iquota.IsiError{Code: "AEC_BAD_REQUEST", Message: "Access denied"})
-			return
-		}
-
-		qp := new(iquota.QuotaParams)
-		app.decoder.Decode(qp, r.URL.Query())
-
-		c := NewOnefsClient()
-		qres, err := c.FetchQuota(qp.Path, qp.Type, "", true, false)
-		if err != nil {
-			logrus.WithFields(logrus.Fields{
-				"err": err.Error(),
-			}).Error("Failed to all quotas")
-			if ierr, ok := err.(*iquota.IsiError); ok {
-				errorHandler(app, w, http.StatusBadRequest, ierr)
-			} else {
-				errorHandler(app, w, http.StatusBadRequest, &iquota.IsiError{Code: "AEC_BAD_REQUEST", Message: "Fatal system error"})
-			}
-
-			return
-		}
-
-		qr := &iquota.QuotaRestResponse{Quotas: qres.Quotas}
-
-		for {
-			if len(qres.Resume) == 0 {
-				break
-			}
-			qres, err = c.FetchQuotaResume(qres.Resume)
-			if err != nil {
-				logrus.WithFields(logrus.Fields{
-					"err": err.Error(),
-				}).Error("Failed to fetch using resume")
-				if ierr, ok := err.(*iquota.IsiError); ok {
-					errorHandler(app, w, http.StatusBadRequest, ierr)
-				} else {
-					errorHandler(app, w, http.StatusBadRequest, &iquota.IsiError{Code: "AEC_BAD_REQUEST", Message: "Fatal system error"})
-				}
-
-				return
-			}
-
-			qr.Quotas = append(qr.Quotas, qres.Quotas...)
-		}
-
-		if viper.GetBool("enable_cache") {
-			// Include quotas from cache
-			cqr, err := FetchAllQuotaCache(qp.Type)
-			if err != nil {
-				logrus.Errorf("Error fetching quotas from cache: %s", err)
-				errorHandler(app, w, http.StatusInternalServerError, nil)
-				return
-			}
-
-			logrus.Infof("Found %d quotas from cache", len(cqr.Quotas))
-			qr.Quotas = append(qr.Quotas, cqr.Quotas...)
-		}
-
-		out, err := json.Marshal(qr)
-		if err != nil {
-			logrus.Printf("Error encoding data as json: %s", err)
-			errorHandler(app, w, http.StatusInternalServerError, nil)
-			return
-		}
-
-		w.Header().Set("Content-Type", "application/json")
-		w.Write(out)
-	})
+	return c.JSON(http.StatusOK, []*iquota.Quota{quota})
 }

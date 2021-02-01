@@ -3,3 +3,4 @@ cmd/iquota/iquota.yaml
 cmd/iquota-server/iquota.yaml
 cmd/iquota-server/iquota-server
 cmd/ipanfs/ipanfs
+cmd/ivast/ivast

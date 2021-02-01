@@ -10,8 +10,8 @@ import (
 )
 
 type User struct {
-	Uid    string
-	Groups []string
+	UID    string   `json:"uid"`
+	Groups []string `json:"groups"`
 }
 
 func (u *User) HasGroup(group string) bool {
@@ -26,7 +26,7 @@ func (u *User) HasGroup(group string) bool {
 
 func (u *User) IsAdmin() bool {
 	for _, x := range viper.GetStringSlice("admins") {
-		if x == u.Uid {
+		if x == u.UID {
 			return true
 		} else if u.HasGroup(x) {
 			return true

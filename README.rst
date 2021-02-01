@@ -1,5 +1,5 @@
 ===============================================================================
-Linux CLI tool for Isilon OneFS SmartQuota reporting
+Linux CLI tool for CCR quota reporting
 ===============================================================================
 
 ------------------------------------------------------------------------
@@ -7,26 +7,13 @@ What is iquota?
 ------------------------------------------------------------------------
 
 iquota is a command line tool and associated server application for reporting
-quotas from Isilon nfs mounts using the OneFS API. Isilon is a scale out NAS
-platform by EMC and when used in a Linux environment lacks adequate CLI tools
-for reporting quotas from client mounts. For example, in an HPC environment
-where Isilon is mounted via nfs on a front end machine running Linux, users
-need a way to check and report on their quotas. This project aims to provide a
-tool very similar to the native quota command in Linux but for Isilon nfs
-mounts. This `post <https://community.emc.com/message/762183#762183>`_ sums up
-essentially what this project aims to provide.  
+quotas for CCR storage systems.
 
-The following diagram shows the basic architecture of iquota:
-
-.. image:: docs/iquota-diagram.png
-
-Linux clients mount Isilon /ifs over nfs. Users obtain kerberos credentials via
-knit and run the iquota client command which connects to the iquota-server
+Linux clients mount storage systems over nfs. Users obtain kerberos credentials
+via knit and run the iquota client command which connects to the iquota-server
 (proxy) over HTTPS (using GSSAPI/SPNEGO for auth). The iquota-proxy server
-validates the users kerberos credentials and requests quota information using
-the OneFS API. The iquota-server connects to the OneFS API using a system
-account which has read-only access to quota information using OneFS RBAC (role
-based access control).
+validates the users kerberos credentials and requests quota information cached
+in redis. 
 
 ------------------------------------------------------------------------
 Features
@@ -40,7 +27,6 @@ Features
 Requirements
 ------------------------------------------------------------------------
 
-- Isilon OneFS API (v7.2.1)
 - Linux
 - Kerberos
 - sssd-ifp (SSSD InfoPipe responder)
@@ -55,18 +41,6 @@ flavor of Linux*
 Download the RPM release `here <https://github.com/ubccr/iquota/releases>`_::
 
   $ rpm -Uvh iquota-server-0.x.x-x.el7.centos.x86_64.rpm
-
-Create user account for accessing OneFS API
-============================================
-
-Create a role in OneFS that allows read-only access to quota information. For
-example::
-
-    # isi auth roles create --name=roQuotaUser --description='Readonly quota access'
-    # isi auth roles modify --add-priv-ro=ISI_PRIV_QUOTA --role=roQuotaUser
-
-Create a system user/pass account and add this user to the role. This will be
-the user account the iquota-server will use to connect to OneFS API.
 
 Setup Kerberos HTTP keytab
 ===========================
@@ -122,14 +96,9 @@ command. The array of unix groups for the user should be displayed::
 Configure iquota.yaml
 =====================
 
-Edit iquota configuration file. Add host, port, user/pass for OneFS API, path to
-http keytab::
+Edit iquota configuration file::
 
     $ vim /etc/iquota/iquota.yaml 
-    onefs_host: "localhost"
-    onefs_port: 8080
-    onefs_user: "user"
-    onefs_pass: "pass"
     keytab: "/path/to/http.keytab"
     [ edit to taste ]
 
@@ -161,10 +130,10 @@ To view iquota-server system logs run::
     $ journalctl -u iquota-server
 
 ------------------------------------------------------------------------
-Install iquota on all client machines mounting /ifs over nfs
+Install iquota on all client machines mounting storage over nfs
 ------------------------------------------------------------------------
 
-On all client machines mounting Isilon /ifs over nfs install the iquota client.
+On all client machines mounting storage over nfs install the iquota client.
 Download the RPM release `here <https://github.com/ubccr/iquota/releases>`_::
 
   $ rpm -Uvh iquota-0.x.x-x.el7.centos.x86_64.rpm
@@ -200,8 +169,8 @@ Check user/group quotas::
 Configure caching
 ------------------------------------------------------------------------
 
-iquota-server can optionally be configured to cache results for a given time
-period. This helps reduce the load on the OneFS API and provide better iquota
+iquota-server should be configured to cache results for a given time period.
+This helps reduce the load on the storage APIs and provide better iquota
 performance. To enable caching first install redis then update
 /etc/iquota/iquota.yaml.
 
@@ -218,12 +187,6 @@ Edit /etc/iquota/iquota.yaml and restart::
     enable_caching: true
 
     $ systecmtl restart iquota-server
-
-------------------------------------------------------------------------
-References
-------------------------------------------------------------------------
-
-1. OneFS API Docs - https://community.emc.com/docs/DOC-48273
 
 ------------------------------------------------------------------------
 License

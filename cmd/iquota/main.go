@@ -26,22 +26,17 @@ func main() {
 	app := cli.NewApp()
 	app.Name = "iquota"
 	app.Authors = []cli.Author{cli.Author{Name: "Andrew E. Bruno", Email: "aebruno2@buffalo.edu"}}
-	app.Usage = "displays users' disk usage and limits.  By default only the user quotas are printed."
-	app.Version = "0.0.5"
+	app.Usage = "displays CCR quotas"
+	app.Version = "0.0.6"
 	app.HideVersion = true
 	app.Flags = []cli.Flag{
 		&cli.StringFlag{Name: "conf,c", Usage: "Path to conf file"},
 		&cli.BoolFlag{Name: "debug,d", Usage: "Print debug messages"},
-		&cli.BoolFlag{Name: "verbose,v", Usage: "will display quotas on all mounted filesystems"},
-		&cli.BoolFlag{Name: "long,l", Usage: "display long listing"},
-		&cli.BoolFlag{Name: "full-path", Usage: "show full path for nfs mounts"},
-		&cli.BoolFlag{Name: "group,g", Usage: "Print group quotas for the group of which the user is a member"},
 		&cli.BoolFlag{Name: "user,u", Usage: "Print user quota"},
-		&cli.BoolFlag{Name: "show-default", Usage: "Print default quota"},
-		&cli.BoolFlag{Name: "export-over-quota,x", Usage: "Export all user/groups that are over quota"},
+		&cli.BoolFlag{Name: "long,l", Usage: "display long listing"},
 		&cli.StringFlag{Name: "show-user", Usage: "Print user quota for specified user (super-user only)"},
 		&cli.StringFlag{Name: "show-group", Usage: "Print group quota for specified group"},
-		&cli.StringFlag{Name: "f,filesystem", Usage: "report quotas only for filesystems specified on command line"},
+		&cli.StringFlag{Name: "p,path,f,filesystem", Usage: "report quota for filesystem path"},
 	}
 	app.Before = func(c *cli.Context) error {
 		if c.GlobalBool("debug") {
@@ -61,16 +56,13 @@ func main() {
 	}
 	app.Action = func(c *cli.Context) {
 		client := &QuotaClient{
-			Verbose:     c.Bool("verbose"),
 			Group:       c.Bool("group"),
 			User:        c.Bool("user"),
 			Long:        c.Bool("long"),
-			Default:     c.Bool("show-default"),
-			OverQuota:   c.Bool("export-over-quota"),
-			FullPath:    c.Bool("full-path"),
 			UserFilter:  c.String("show-user"),
 			GroupFilter: c.String("show-group"),
-			Filesystem:  c.String("filesystem")}
+			Path:        c.String("path"),
+		}
 
 		cert := viper.GetString("iquota_cert")
 		if len(cert) > 0 {
