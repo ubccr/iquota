@@ -73,7 +73,7 @@ func (c *Cache) redisFind(pattern string) ([]*Quota, error) {
 	var quotas []*Quota
 
 	for _, key := range keys {
-		if strings.HasPrefix(key, viper.GetString("home_dir")) {
+		if len(pattern) > 0 && strings.HasPrefix(key, viper.GetString("home_dir")) {
 			continue
 		}
 
