@@ -26,6 +26,7 @@ func NewHandler() (*Handler, error) {
 
 func (h *Handler) SetupRoutes(e *echo.Echo) {
 	e.GET("/quota", KerbAuthRequired(h.Quota)).Name = "quota"
+	e.GET("/export", KerbAuthRequired(h.Export)).Name = "export"
 }
 
 func (h *Handler) Quota(c echo.Context) error {
@@ -122,4 +123,32 @@ func (h *Handler) Quota(c echo.Context) error {
 	}
 
 	return c.JSON(http.StatusOK, []*iquota.Quota{quota})
+}
+
+func (h *Handler) Export(c echo.Context) error {
+	u := c.Get("user")
+	if u == nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, "Failed to get user")
+	}
+	user := u.(*User)
+	log.Infof("User %s requesting export", user.UID)
+
+	if !user.IsAdmin() {
+		return echo.ErrUnauthorized
+	}
+
+	quotas, err := h.cache.SearchDirectoryQuotaCache("")
+	if err != nil {
+		if errors.Is(err, iquota.ErrNotFound) {
+			return echo.NewHTTPError(http.StatusNotFound, nil)
+		}
+
+		log.WithFields(log.Fields{
+			"err": err,
+		}).Error("Failed to export all quotas")
+
+		return echo.NewHTTPError(http.StatusInternalServerError, "Failed to export quotas")
+	}
+
+	return c.JSON(http.StatusOK, quotas)
 }
