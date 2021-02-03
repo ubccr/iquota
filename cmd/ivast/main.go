@@ -153,6 +153,10 @@ func checkAndSetUserQuotas(host, user, password string) {
 		log.Fatalf("Failed to fetch all quotas from vast: %s", err)
 	}
 
+	if len(quotas) <= 20 {
+		log.Fatalf("Something is a bit off, we got an very small number of quotas so we're going to bail here")
+	}
+
 	qmap := make(map[string]bool)
 	for _, q := range quotas {
 		qmap[q.Path] = true
