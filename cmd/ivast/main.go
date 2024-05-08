@@ -55,7 +55,7 @@ const (
 )
 
 var (
-	DefaultUserQuotaLimit = uint64(10000000000)   //  10G
+	DefaultUserQuotaLimit = uint64(25000000000)   //  25G
 	DefaultUserFilesLimit = uint64(10000000)      //  10M
 	DefaultQuotaLimit     = uint64(1000000000000) //   1T
 	DefaultFilesLimit     = uint64(200000000)     // 200M
