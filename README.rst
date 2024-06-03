@@ -9,18 +9,17 @@ What is iquota?
 iquota is a command line tool and associated server application for reporting
 quotas for CCR storage systems.
 
-Linux clients mount storage systems over nfs. Users obtain kerberos credentials
-via knit and run the iquota client command which connects to the iquota-server
-(proxy) over HTTPS (using GSSAPI/SPNEGO for auth). The iquota-proxy server
-validates the users kerberos credentials and requests quota information cached
-in redis. 
+Linux clients mount storage systems over nfs. Users run the iquota client
+command which connects to the iquota-server (proxy) over HTTPS (using MUNGE for
+auth). The iquota-proxy server validates the users munge credentials and
+requests quota information cached in redis. 
 
 ------------------------------------------------------------------------
 Features
 ------------------------------------------------------------------------
 
 - User/Group quota reporting from command line
-- Kerberos based authentication
+- MUNGE based authentication
 - Caching via redis
 
 ------------------------------------------------------------------------
@@ -28,7 +27,7 @@ Requirements
 ------------------------------------------------------------------------
 
 - Linux
-- Kerberos
+- MUNGE
 - sssd-ifp (SSSD InfoPipe responder)
 
 ------------------------------------------------------------------------
@@ -41,19 +40,6 @@ flavor of Linux*
 Download the RPM release `here <https://github.com/ubccr/iquota/releases>`_::
 
   $ rpm -Uvh iquota-server-0.x.x-x.el7.centos.x86_64.rpm
-
-Setup Kerberos HTTP keytab
-===========================
-
-The iquota-server uses Kerberos authentication. You'll need to create a HTTP
-service keytab file. For example::
-
-    kadmin: addprinc -randkey HTTP/host.domain.com@YOUR-REALM.COM
-
-If using FreeIPA you can run::
-
-    $ ipa service-add HTTP/host.domain.com
-    $ ipa-getkeytab -s master.domain.com -p HTTP/host.domain.com -k http.keytab
 
 Configure sssd
 ===============
@@ -99,7 +85,6 @@ Configure iquota.yaml
 Edit iquota configuration file::
 
     $ vim /etc/iquota/iquota.yaml 
-    keytab: "/path/to/http.keytab"
     [ edit to taste ]
 
 It's highly recommended to run iquota-server using HTTPS. You'll need an SSL
@@ -150,8 +135,6 @@ Usage
 
 Check user/group quotas::
 
-    $ kinit walterwhite
-    Password for walterwhite@REALM:
     $ iquota -u -g
     User quotas:
     Filesystem  user               files      used     limit    grace 

@@ -19,8 +19,8 @@ import (
 	"github.com/fatih/color"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
+	munge "github.com/ubccr/gomunge"
 	"github.com/ubccr/iquota"
-	"github.com/ubccr/kerby/khttp"
 )
 
 const (
@@ -64,8 +64,14 @@ func (c *QuotaClient) fetchQuota(url string) ([]*iquota.Quota, error) {
 		tr.TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
 	}
 
-	t := &khttp.Transport{Next: tr}
-	client := &http.Client{Transport: t}
+	cred, err := munge.Encode()
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Set("Authorization", cred)
+
+	client := &http.Client{}
 
 	res, err := client.Do(req)
 	if err != nil {
@@ -155,11 +161,6 @@ func (c *QuotaClient) printDirectoryQuota() {
 	if err != nil {
 		if errors.Is(err, iquota.ErrNotFound) {
 			logrus.Warn("No quotas found")
-			return
-		}
-
-		if strings.Contains(err.Error(), "No Kerberos credentials available") {
-			logrus.Fatal("No Kerberos credentials available. Please run kinit")
 			return
 		}
 

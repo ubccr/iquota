@@ -25,8 +25,8 @@ func NewHandler() (*Handler, error) {
 }
 
 func (h *Handler) SetupRoutes(e *echo.Echo) {
-	e.GET("/quota", KerbAuthRequired(h.Quota)).Name = "quota"
-	e.GET("/export", KerbAuthRequired(h.Export)).Name = "export"
+	e.GET("/quota", MungeAuthRequired(h.Quota)).Name = "quota"
+	e.GET("/export", MungeAuthRequired(h.Export)).Name = "export"
 }
 
 func (h *Handler) Quota(c echo.Context) error {

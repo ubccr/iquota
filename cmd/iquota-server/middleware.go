@@ -5,61 +5,45 @@
 package main
 
 import (
-	"net/http"
-	"os"
-	"strings"
+	"os/user"
 
 	"github.com/labstack/echo/v4"
 	"github.com/sirupsen/logrus"
-	"github.com/spf13/viper"
-	"github.com/ubccr/kerby"
+	munge "github.com/ubccr/gomunge"
 )
 
-var (
-	negotiateHeader = "Negotiate"
-)
-
-// Kerberos SPNEGO authentication
-func KerbAuthRequired(next echo.HandlerFunc) echo.HandlerFunc {
+// MUNGE authentication
+func MungeAuthRequired(next echo.HandlerFunc) echo.HandlerFunc {
 	return func(c echo.Context) error {
-		authReq := strings.Split(c.Request().Header.Get(echo.HeaderAuthorization), " ")
-		if len(authReq) != 2 || authReq[0] != negotiateHeader {
-			c.Response().Header().Set(echo.HeaderWWWAuthenticate, negotiateHeader)
+		authReq := c.Request().Header.Get(echo.HeaderAuthorization)
+		if len(authReq) == 0 {
 			return echo.ErrUnauthorized
 		}
 
-		os.Setenv("KRB5_KTNAME", viper.GetString("keytab"))
-
-		ks := new(kerby.KerbServer)
-		err := ks.Init("")
+		cred, err := munge.Decode(authReq)
 		if err != nil {
 			logrus.WithFields(logrus.Fields{
 				"err": err.Error(),
-			}).Error("KerbServer Init Error")
-			return echo.NewHTTPError(http.StatusInternalServerError, "Fatal error")
-		}
-		defer ks.Clean()
-
-		err = ks.Step(authReq[1])
-		c.Response().Header().Set(echo.HeaderWWWAuthenticate, negotiateHeader+" "+ks.Response())
-
-		if err != nil {
-			logrus.WithFields(logrus.Fields{
-				"err": err.Error(),
-			}).Error("KerbServer Step Error")
+			}).Error("Failed to decode munge cred")
 			return echo.ErrUnauthorized
 		}
 
-		princ := ks.UserName()
-		parts := strings.SplitN(princ, "@", 2)
-		user := &User{UID: parts[0]}
-
-		user.Groups, err = FetchGroups(user.UID)
+		ouser, err := user.LookupId(cred.UidString())
 		if err != nil {
-			logrus.Error("Failed to fetch groups for user: %s", user.UID)
+			logrus.WithFields(logrus.Fields{
+				"err": err.Error(),
+			}).Error("Failed to find user account")
+			return echo.ErrUnauthorized
 		}
 
-		c.Set("user", user)
+		u := &User{UID: ouser.Username}
+
+		u.Groups, err = FetchGroups(u.UID)
+		if err != nil {
+			logrus.Errorf("Failed to fetch groups for user: %s", u.UID)
+		}
+
+		c.Set("user", u)
 		return next(c)
 	}
 }
